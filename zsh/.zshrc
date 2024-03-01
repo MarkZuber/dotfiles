@@ -354,8 +354,9 @@ alias map="xargs -n1"
 # figlet -f mini Zube Mac | lolcat
 # fortune -s | cowsay | lolcat
 
-
 alias sshpi="ssh pi@192.168.2.203"
-
+alias gcma="git checkout main"
+alias gcmas="git checkout master"
+alias gpfix="git a; git com 'fix'; git push"
 
 

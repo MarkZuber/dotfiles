@@ -17,7 +17,7 @@
 
 brew install --cask rectangle
 brew install rustup-init tree-sitter neovim ripgrep fzf eza cowsay fortune figlet bat lazygit lolcat lsd stow
-brew install youtube-dl jq htop
+brew install youtube-dl jq htop git-lfs pstree wget pkg-config git-credential-manager
 
 # Maybe just get nvm instead
 # brew instal node yarn
