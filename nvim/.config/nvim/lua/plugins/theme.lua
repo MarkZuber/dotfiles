@@ -1,10 +1,12 @@
 return {
-	"catppuccin/nvim",
-	name = "theme",
-	lazy = false,
-	priority = 999,
-	config = function()
-		vim.cmd("colorscheme catppuccin")
-		require("catppuccin").setup({})
-	end,
+    "catppuccin/nvim",
+    name = "theme",
+    lazy = false,
+    priority = 999,
+    config = function()
+        require("catppuccin").setup({
+            no_italic = true,
+        })
+        vim.cmd("colorscheme catppuccin")
+    end,
 }
