@@ -132,6 +132,11 @@ source $ZSH/oh-my-zsh.sh
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
+# setup nvm
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+
+
 alias vim="nvim"
 alias sv="sudo nvim"
 
@@ -140,7 +145,6 @@ export EDITOR='nvim'
 
 alias cls='clear'
 alias srcz="source ~/.zshrc"
-alias zshrc="code ~/.zshrc"
 alias viz="vim ~/.zshrc"
 
 alias python="python3"
@@ -156,8 +160,15 @@ alias cd...='cd ../..'
 alias cd....='cd ../../..'
 alias cd.....='cd ../../../..'
 
-alias c="code ."
-alias ci="code-insiders ."
+if [[ -f "~/.zube-at-work" ]]; then
+  alias c="code-fb ."
+  alias ci="code-fb-insiders ."
+else
+  alias c="code ."
+  alias ci="code-insiders ."
+fi
+
+alias zshrc="c ~/.zshrc"
 
 alias mkdir="mkdir -p"
 alias md="mkdir"
