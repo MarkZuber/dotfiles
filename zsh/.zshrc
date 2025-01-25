@@ -273,8 +273,9 @@ alias ic="wezterm imgcat"
 
 alias ls="lsd "
 
-eval "$(zoxide init zsh)"
-alias cd="z"
+# I don't really like zoxide.  Maybe I need to learn it more, but I like what i have.
+# eval "$(zoxide init zsh)"
+# alias cd="z"
 
 alias lt="lsd --tree"
 # list all files colorized in long format
