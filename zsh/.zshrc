@@ -21,13 +21,14 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # initialize autocompletion
 autoload -U compinit && compinit
 
-HISTFILE=~/.config/zsh/.zsh_history
+HISTFILE=~/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
 
 setopt CORRECT
 setopt EXTENDED_HISTORY                 # add timestamps to history
 setopt APPEND_HISTORY                   # adds history
+setopt SHARE_HISTORY
 setopt INC_APPEND_HISTORY SHARE_HISTORY # adds history incrementally and share it across sessions
 setopt HIST_IGNORE_ALL_DUPS             # don't record dupes in history
 setopt HIST_REDUCE_BLANKS
@@ -105,6 +106,9 @@ export DISABLE_UPDATE_PROMPT=true
 plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions fzf-tab z)
 
 fpath+=${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src
+# TODO: this was the old way, make sure we're not breaking by removing
+# plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions z)
+# source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 source $ZSH/oh-my-zsh.sh
 
@@ -165,13 +169,102 @@ alias cd...='cd ../..'
 alias cd....='cd ../../..'
 alias cd.....='cd ../../../..'
 
-if [[ -f "~/.zube-at-work" ]]; then
-  alias c="code-fb ."
-  alias ci="code-fb-insiders ."
+. "$HOME/.cargo/env"
+
+if [[ -f ~/.zube-at-work ]]; then
+  alias sshdev="ssh devvm30920.prn0.facebook.com"
+  alias etdev="et devvm30920.prn0.facebook.com:8080"
+  alias etdevmux="et -c 'tmux -CC new-session -As auto' -x devvm30920.prn0.facebook.com:8080"
+
+  alias c="code-fb"
+  alias ci="code-fb-insiders"
+
+  alias chime="afplay /System/Library/Sounds/Glass.aiff -v 2"
+
+  alias cdf="cd ~/fbsource/"
+
+  ### BEGIN VSCODE ALIASES ###
+
+  alias cdvs="cd ~/fbsource/xplat/vscode"
+  alias cvs="code-fb ~/fbsource/xplat/vscode"
+
+  alias ybrc="yarn build --ext remote-connections"
+  alias yybrc="yarn && yarn build --ext remote-connections"
+
+  source ~/fbsource/xplat/vscode/scripts/distro/aliases-laptop.sh
+
+  ### END VSCODE ALIASES ###
+
+  ### BEGIN ANDROID ALIASES ###
+  alias cda="cd ~/fbsource/fbandroid/"
+  alias cdaf="cd ~/fbsource/fbandroid/devEnv/focus/python/focus"
+
+  alias bbp="buck2 build //fbandroid/java/com/facebook/tools/intellij:configured_active_plugins"
+  alias afp="arc focus --targets configured_active_plugins --open"
+
+  alias mpsetup="arc monoproject setup --extras ide-plugins"
+  alias mprefresh="arc monoproject refresh"
+  alias killasport="rm ~/Library/Caches/Google/AndroidStudio2024.1/plugins-sandbox/system/.port"
+
+  alias jbgate="jetbrains-cli install-ide gateway"
+  alias hgstable="hg pull && hg up remote/fbandroid/stable"
+  alias ap="arc pull && chime"
+  alias al="arc lint -a"
+  alias pyr="~/fbsource/fbandroid/scripts/run_pyre_typecheck.py"
+  alias afig="arc focus-android config"
+  alias afc="arc focus-android config"
+  alias afix="arc focus-android fix --open --restart-ide && chime"
+  alias afip="arc focus install-plugins --targets"
+  unrage() { arc focus-android unrage $1 --open }
+
+  # Used to build/open AS for arc focus development
+  alias af="arc focus-android --targets configured_active_plugins focus-android //fbandroid/java/com/facebook/tools/intellij/internauth:internauth //xplat/buck2/intellij_project/tools/project_writer:project_writer --pinned fbandroid/java/com/facebook/tools/intellij/... fbandroid/devEnv/focus/python/... --without-tests --restart-ide --open --fetch-from-remote-cache=false && arc focus-android sync --install-plugins-to-sandbox && chime"
+
+  # Used to build/open AS for gateway development
+  alias afgate="arc focus-android --open --targets gateway-connector"
+
+  # run tests for arc focus python code
+  alias test_af="buck2 test //fbandroid/devEnv/focus/python/focus/__tests__:tests"
+
+  # run tests for java code
+  alias test_fb4idea="buck2 test //fbandroid/javatests/com/facebook/tools/intellij/fbandroid4idea:integration --target-platforms //third-party/java/intellij:AI-223-platform"
+
+  # build plugins for gateway
+  bldgwplug() { buck2 build scriptus codecompose4idea gatekeeper ideabuck invoker navelgazer scubalogger theia --target-platforms //third-party/java/intellij:IC-$1-platform }
+  alias hgrf="hg rebase -d fbandroid/stable"
+
+  alias og="open /Applications/GW-223.8472.app"
+  alias od="dev connect -t fbsource:android -e -i projector"
+  alias odx="dev connect -t fbsource:android_devx -e -i projector"
+
+  # added by setup_fb4a.sh
+  export ANDROID_SDK=/opt/android_sdk
+  export ANDROID_NDK_REPOSITORY=/opt/android_ndk
+  export ANDROID_HOME=${ANDROID_SDK}
+  export PATH=${PATH}:${ANDROID_SDK}/emulator:${ANDROID_SDK}/tools:${ANDROID_SDK}/tools/bin:${ANDROID_SDK}/platform-tools
+
+  ### END ANDROID ALIASES ###
+
+  # hg aliases
+  alias jfs="jf submit -s"
+  jedi_land() { jf sync && jf land --mode jedi --bypass-land-issues "$1" }
+
+  # used to lint/typecheck python code and then amend the current commit
+  alias hgas="al && pyr && hg amend && jf submit && chime"
+  hgcs() { al && pyr && hg commit -m "$1" && jf submit && chime }
+
+  alias clean_wd="hg revert --all && hg purge"
+  clean_ssd() { rm -rf ~/.hgcache/* && cd ~/fbsource && buck clean }
+
 else
-  alias c="code ."
-  alias ci="code-insiders ."
+  alias c="code"
+  alias ci="code-insiders"
 fi
+
+alias cdh="cd ~/"
+alias cdhome="cdh"
+alias cdr="cd /"
+alias cdroot="cdr"
 
 alias zshrc="c ~/.zshrc"
 
@@ -383,5 +476,3 @@ alias sshpi="ssh pi@192.168.2.203"
 alias gcma="git checkout main"
 alias gcmas="git checkout master"
 alias gpfix="git a; git com 'fix'; git push"
-
-
