@@ -7,6 +7,12 @@ config.font = wezterm.font("ComicShannsMono Nerd Font")
 config.font_size = 20
 config.color_scheme = 'Material Darker (base 16)'
 
+config.colors = {
+    -- split = '#664422'
+    split = '#006600'
+}
+config.underline_thickness = "8px"
+
 config.enable_tab_bar = false
 
 -- This removes the title bar but does make window move a bit more difficult
@@ -127,6 +133,11 @@ wezterm.on('update-right-status', function(window, pane)
       -- Cancel the mode by pressing escape
       { key = 'Escape', action = 'PopKeyTable' },
     },
+  }
+
+  config.keys = {
+    { key = 'v', mods = 'CTRL|ALT|SHIFT', action = wezterm.action.SplitVertical { domain = 'CurrentPaneDomain' }},
+    { key = 'h', mods = 'CTRL|ALT|SHIFT', action = wezterm.action.SplitHorizontal { domain = 'CurrentPaneDomain' } }
   }
 
 

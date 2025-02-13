@@ -172,10 +172,6 @@ alias cd.....='cd ../../../..'
 . "$HOME/.cargo/env"
 
 if [[ -f ~/.zube-at-work ]]; then
-  alias sshdev="ssh devvm30920.prn0.facebook.com"
-  alias etdev="et devvm30920.prn0.facebook.com:8080"
-  alias etdevmux="et -c 'tmux -CC new-session -As auto' -x devvm30920.prn0.facebook.com:8080"
-
   alias c="code-fb"
   alias ci="code-fb-insiders"
 
@@ -288,6 +284,7 @@ alias topten="history | commands | sort -rn | head"
 alias listening="lsof -i -P | grep LISTEN "
 
 alias glog="git log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --branches"
+alias gpusho='git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)'
 
 alias flacconv="for f in *.flac; do ffmpeg -i "$f" -ab 320k -map_metadata 0 -id3v2_version 3 "${f%.flac}.mp3"; done"
 
@@ -476,3 +473,6 @@ alias sshpi="ssh pi@192.168.2.203"
 alias gcma="git checkout main"
 alias gcmas="git checkout master"
 alias gpfix="git a; git com 'fix'; git push"
+
+# source local file that won't get checked in to my dotfiles
+[[ ! -f ~/.zshrc_local.zsh ]] || source ~/.zshrc_local.zsh
