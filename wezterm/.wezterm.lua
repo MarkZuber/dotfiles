@@ -3,15 +3,18 @@ local wezterm = require("wezterm")
 local act = wezterm.action
 local config = wezterm.config_builder()
 
-config.font = wezterm.font("ComicShannsMono Nerd Font")
+-- config.font = wezterm.font("ComicShannsMono Nerd Font")
+config.font = wezterm.font("Komiki Mono Zero")
 config.font_size = 20
 config.color_scheme = 'Material Darker (base 16)'
+
+config.window_close_confirmation = 'NeverPrompt'
 
 config.colors = {
     -- split = '#664422'
     split = '#006600'
 }
-config.underline_thickness = "8px"
+config.underline_thickness = "4px"
 
 config.enable_tab_bar = false
 

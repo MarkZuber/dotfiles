@@ -1,0 +1,52 @@
+
+# fonts
+font-family = Komiki Mono Zero
+font-size = 19
+
+# can't do opacity with custom shaders :(
+# background-opacity = 0.95
+
+split-divider-color = blue
+
+# theme = GruvboxDarkHard
+# theme = MaterialOcean
+# theme = Neutron
+# theme = gruvbox-material
+
+# this is the one i want.  above ones are other nice candidates
+theme = Dark Modern
+
+# none of them have a blue background like i like, so fixing to this.
+background = #000022
+
+# never prompt to exit
+confirm-close-surface = false
+
+# mouse
+mouse-scroll-multiplier = 2
+mouse-hide-while-typing = true
+
+# clipboard
+copy-on-select = clipboard
+clipboard-trim-trailing-spaces = true
+
+#behavior
+quit-after-last-window-closed = true
+shell-integration-features = true
+
+# this doesn't seem to do anything?
+macos-titlebar-style = transparent
+
+# window
+window-save-state = always
+window-step-resize = false
+background-blur-radius = 15
+window-padding-balance = true
+confirm-close-surface = false
+
+# https://github.com/hackr-sh/ghostty-shaders
+# note that you can do multiple shaders at the same time
+# custom-shader = ghostty-shaders/galaxy.glsl
+# custom-shader = ghostty-shaders/underwater.glsl
+# custom-shader = ghostty-shaders/matrix-hallway.glsl
+# custom-shader = ghostty-shaders/cubes.glsl
