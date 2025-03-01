@@ -448,6 +448,10 @@ alias df='df -kTh'
 # | Other                                                                      |
 # ------------------------------------------------------------------------------
 
+# Put this in here for ghostty
+# See https://github.com/ghostty-org/ghostty/issues/3335
+export TERM=xterm-256color
+
 # decimal to hexadecimal value
 alias dec2hex='printf "%x\n" $1'
 

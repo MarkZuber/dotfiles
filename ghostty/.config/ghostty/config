@@ -3,6 +3,8 @@
 font-family = Komiki Mono Zero
 font-size = 19
 
+window-title-font-family = Komiki Mono Zero
+
 # can't do opacity with custom shaders :(
 # background-opacity = 0.95
 
@@ -43,10 +45,20 @@ window-step-resize = false
 background-blur-radius = 15
 window-padding-balance = true
 confirm-close-surface = false
+shell-integration = zsh
+window-theme = dark
+custom-shader-animation = false
+# window-decoration = false
 
 # https://github.com/hackr-sh/ghostty-shaders
 # note that you can do multiple shaders at the same time
 # custom-shader = ghostty-shaders/galaxy.glsl
 # custom-shader = ghostty-shaders/underwater.glsl
-# custom-shader = ghostty-shaders/matrix-hallway.glsl
-# custom-shader = ghostty-shaders/cubes.glsl
+custom-shader = ghostty-shaders/matrix-hallway.glsl
+custom-shader = ghostty-shaders/cubes.glsl
+
+
+# keybindings
+keybind = global:shift+cmd+grave_accent=toggle_quick_terminal
+keybind = shift+right=adjust_selection:right
+
