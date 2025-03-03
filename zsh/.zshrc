@@ -478,5 +478,7 @@ alias gcma="git checkout main"
 alias gcmas="git checkout master"
 alias gpfix="git a; git com 'fix'; git push"
 
+alias rg="rg --hidden --glob '!.git'"
+
 # source local file that won't get checked in to my dotfiles
 [[ ! -f ~/.zshrc_local.zsh ]] || source ~/.zshrc_local.zsh
