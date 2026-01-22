@@ -11,7 +11,12 @@
 # 2. fix nvim configs (because obviously they're out of date and broken)
 
 sudo dnf update -y
-sudo dnf install lsd fzf ripgrep nvim bat tmux neofetch -y
+sudo dnf install lsd fzf ripgrep nvim bat tmux neofetch git -y
+
+## git credential manager - need to test this
+sudo dnf copr enable matthickford/git-credential-manager -y
+sudo dnf install git-credential-manager
+git-credential-manager-core configure
 
 mkdir -p ~/repos
 cd ~/repos
