@@ -4,7 +4,7 @@ font-family = ""
 font-family = JetBrains Mono
 # font-family = Komiki Mono Zero
 font-family = ComicShannsMono Nerd Font
-font-size = 19
+font-size = 10
 # font-codepoint-map = U+E000-U+F8FF=fontname:JetBrains Mono
 #  font-family = Symbols Nerd Font Mono
 # adjust-icon-height = 150%
@@ -22,7 +22,7 @@ split-divider-color = blue
 # theme = gruvbox-material
 
 # this is the one i want.  above ones are other nice candidates
-theme = Dark Modern
+# theme = Dark Modern
 
 # none of them have a blue background like i like, so fixing to this.
 background = #000022
@@ -64,7 +64,7 @@ custom-shader-animation = false
 
 # https://github.com/hackr-sh/ghostty-shaders
 # note that you can do multiple shaders at the same time
-# custom-shader = ghostty-shaders/galaxy.glsl
+# scustom-shader = ghostty-shaders/galaxy.glsl
 # custom-shader = ghostty-shaders/underwater.glsl
 # custom-shader = ghostty-shaders/matrix-hallway.glsl
 # custom-shader = ghostty-shaders/cubes.glsl
@@ -76,7 +76,6 @@ custom-shader-animation = false
 
 # like this one
 # custom-shader = ghostty-shaders/cursor_frozen.glsl
-
 # custom-shader = ghostty-shaders/cursor_smear_fade.glsl
 # custom-shader = ghostty-shaders/debug_cursor_animated.glsl
 

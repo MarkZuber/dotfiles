@@ -409,3 +409,4 @@ fi
 
 # source local file that won't get checked in to my dotfiles
 [[ ! -f ~/.zshrc_local.zsh ]] || source ~/.zshrc_local.zsh
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
