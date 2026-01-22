@@ -11,7 +11,7 @@ default = simple
 cmd = "code --wait --diff  "
 
 [diff]
-tool = code
+	tool = vscode
 
 [alias]
 cemail = config --get user.email
@@ -81,22 +81,32 @@ changed = green
 untracked = cyan
 [user]
 name = Mark Zuber
-email = mark@zube.com
+	email = zube@meta.com
 [credential]
 helper = store
-	helper = 
+	helper =
 	helper = /usr/local/share/gcm-core/git-credential-manager
 [pull]
 rebase = true
 [core]
-editor = nvim
-pager = delta
+	editor = code-fb --wait --new-window
+	pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[merge]
+    conflictstyle = zdiff3
+
+[include]
+	path = ~/dotfiles/delta/themes.gitconfig
 
 [delta]
-features = side-by-side line-numbers decorations
-plus-color = "#012800"
-minus-color = "#340001"
-side-by-side = true
+	features = collared-trogon line-numbers decorations
+	side-by-side = false
+    navigate = true  # use n and N to move between diff sections
+    dark = true      # or light = true, or omit for auto-detection
+
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
@@ -104,3 +114,7 @@ side-by-side = true
 	required = true
 [credential "https://dev.azure.com"]
 	useHttpPath = true
+[diff "tool.vscode"]
+	cmd = code-fb --wait --diff $LOCAL $REMOTE
+[init]
+	defaultBranch = main

@@ -9,7 +9,7 @@ font-size = 19
 #  font-family = Symbols Nerd Font Mono
 # adjust-icon-height = 150%
 
-# window-title-font-family = Komiki Mono Zero
+window-title-font-family = Komiki Mono Zero
 
 # can't do opacity with custom shaders :(
 # background-opacity = 0.95
@@ -31,8 +31,8 @@ background = #000022
 confirm-close-surface = false
 
 # mouse
-# mouse-scroll-multiplier = 2
-# mouse-hide-while-typing = true
+mouse-scroll-multiplier = 2
+mouse-hide-while-typing = true
 
 # clipboard
 copy-on-select = clipboard
