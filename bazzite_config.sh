@@ -11,7 +11,7 @@
 # 2. fix nvim configs (because obviously they're out of date and broken)
 
 sudo dnf update -y
-sudo dnf install lsd fzf ripgrep nvim bat tmux -y
+sudo dnf install lsd fzf ripgrep nvim bat tmux neofetch -y
 
 mkdir -p ~/repos
 cd ~/repos
@@ -79,6 +79,9 @@ git clone https://github.com/medusalix/xone
 cd xone
 sudo ./install.sh --release
 sudo xone-get-firmware.sh
+
+# show off
+neofetch
 
 # THINGS TO DO that I can't automate
 # remap capslock
