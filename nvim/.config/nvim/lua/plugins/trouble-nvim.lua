@@ -1,28 +1,31 @@
-local diagnostic_signs = require("util.icons").diagnostic_signs
 local maplazykey = require("util.keymapper").maplazykey
 
 return {
 	"folke/trouble.nvim",
 	dependencies = { "nvim-tree/nvim-web-devicons" },
 	opts = {
-		signs = {
-			-- icons / text used for a diagnostic
-			error = diagnostic_signs.Error,
-			warning = diagnostic_signs.Warn,
-			hint = diagnostic_signs.Hint,
-			information = diagnostic_signs.Info,
-			other = diagnostic_signs.Info,
+		modes = {
+			diagnostics = {
+				auto_close = false,
+				auto_open = false,
+				auto_preview = true,
+				auto_refresh = true,
+			},
 		},
 	},
+	cmd = "Trouble",
 	keys = {
 		maplazykey("<leader>xx", function()
-			require("trouble").toggle()
-		end, "Toggle Trouble"),
+			require("trouble").toggle("diagnostics")
+		end, "Toggle Diagnostics"),
 		maplazykey("<leader>xw", function()
-			require("trouble").toggle("workspace_diagnostics")
+			require("trouble").toggle("diagnostics")
 		end, "Show Workspace Diagnostics"),
 		maplazykey("<leader>xd", function()
-			require("trouble").toggle("document_diagnostics")
+			require("trouble").toggle({
+				mode = "diagnostics",
+				filter = { buf = 0 },
+			})
 		end, "Show Document Diagnostics"),
 		maplazykey("<leader>xq", function()
 			require("trouble").toggle("quickfix")
