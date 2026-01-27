@@ -405,7 +405,7 @@ alias rg="rg --hidden --glob '!.git'"
 
 # source script from the same directory as this file
 if [[ -f ~/.zube-at-work ]]; then
-    source "${0:a:h}/work_setup.zsh"
+    source ~/dotfiles/zsh/work_setup.zsh
 else
   alias c="code"
   alias ci="code-insiders"
