@@ -1,0 +1,17 @@
+{
+    "editor.inlineSuggest.allowSuggestOnTriggerCharacters": true,
+    "terminal.integrated.systemd.shouldUse": true,
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "window.restoreWindows": "none",
+    "workbench.startupEditor": "none",
+    "workbench.iconTheme": "material-icon-theme",
+    "editor.fontFamily": "'ComicShannsMono Nerd Font', Menlo, Monaco, 'Courier New', monospace",
+    "editor.fontSize": 18,
+    "editor.fontLigatures": true,
+    "editor.insertSpaces": true,
+    "terminal.integrated.fontSize": 18,
+    "editor.lightbulb.enabled": "on",
+    "git.branchPrefix": "zube/",
+    "diffEditor.ignoreTrimWhitespace": false
+}

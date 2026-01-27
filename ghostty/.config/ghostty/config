@@ -41,6 +41,7 @@ clipboard-trim-trailing-spaces = true
 #behavior
 quit-after-last-window-closed = true
 shell-integration-features = true
+command = zsh
 
 # Navigation TMUX (or Ghostty splits)
 keybind = ctrl+shift+left=goto_split:left

@@ -224,7 +224,39 @@ fi
 fc-cache -fv
 
 # -----------------------------------------------------------------------------
-# Oh-My-Zsh and plugins inside distrobox
+# Set zsh as default shell inside distrobox
+# -----------------------------------------------------------------------------
+
+echo ">>> Setting zsh as default shell inside distrobox..."
+distrobox_run bash -c '
+    if [ "$SHELL" != "/bin/zsh" ]; then
+        sudo chsh -s /bin/zsh $(whoami) 2>/dev/null || \
+        sudo usermod -s /bin/zsh $(whoami) 2>/dev/null || \
+        echo ">>> Note: Could not change shell automatically, run: chsh -s /bin/zsh"
+    fi
+'
+
+# -----------------------------------------------------------------------------
+# Set zsh as default shell on host (Bazzite)
+# -----------------------------------------------------------------------------
+
+echo ">>> Setting zsh as default shell on host..."
+# On immutable systems, zsh should already be available or we use the distrobox zsh
+if command_exists zsh; then
+    if [ "$SHELL" != "$(which zsh)" ]; then
+        echo ">>> Changing default shell to zsh on host..."
+        chsh -s "$(which zsh)" 2>/dev/null || \
+        sudo usermod -s "$(which zsh)" "$USER" 2>/dev/null || \
+        echo ">>> Note: Run 'chsh -s $(which zsh)' manually to change shell"
+    else
+        echo ">>> zsh is already the default shell on host"
+    fi
+else
+    echo ">>> zsh not found on host - terminal will use distrobox zsh via ghostty"
+fi
+
+# -----------------------------------------------------------------------------
+# Oh-My-Zsh and plugins (shared via home mount)
 # -----------------------------------------------------------------------------
 
 # This works fine since all of the zsh config is under $HOME
@@ -283,6 +315,26 @@ make_link ~/repos/dotfiles/editorconfig/.editorconfig ~/.editorconfig
 # gitconfig
 make_link ~/repos/dotfiles/git/.gitconfig ~/.gitconfig
 
+# VSCode settings - native installs
+echo ">>> Linking VSCode settings..."
+VSCODE_SETTINGS_SRC=~/repos/dotfiles/vscode/settings.json
+
+# Native VSCode Stable
+mkdir -p ~/.config/Code/User
+make_link "$VSCODE_SETTINGS_SRC" ~/.config/Code/User/settings.json
+
+# Native VSCode Insiders
+mkdir -p ~/.config/"Code - Insiders"/User
+make_link "$VSCODE_SETTINGS_SRC" ~/.config/"Code - Insiders"/User/settings.json
+
+# Flatpak VSCode Stable
+mkdir -p ~/.var/app/com.visualstudio.code/config/Code/User
+make_link "$VSCODE_SETTINGS_SRC" ~/.var/app/com.visualstudio.code/config/Code/User/settings.json
+
+# Flatpak VSCode Insiders
+mkdir -p ~/.var/app/com.visualstudio.code-insiders/config/"Code - Insiders"/User
+make_link "$VSCODE_SETTINGS_SRC" ~/.var/app/com.visualstudio.code-insiders/config/"Code - Insiders"/User/settings.json
+
 # -----------------------------------------------------------------------------
 # Export useful binaries from distrobox to host
 # -----------------------------------------------------------------------------
@@ -296,6 +348,144 @@ done
 
 # Export cargo-installed tools
 distrobox enter "$DISTROBOX_NAME" -- distrobox-export --bin "$HOME/.cargo/bin/lsd" --export-path ~/.local/bin 2>/dev/null || true
+
+# -----------------------------------------------------------------------------
+# Install Chrome via Flatpak
+# -----------------------------------------------------------------------------
+
+echo ">>> Installing Google Chrome via Flatpak..."
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install -y flathub com.google.Chrome || echo ">>> Chrome may already be installed"
+
+# -----------------------------------------------------------------------------
+# Install VSCode Extensions
+# -----------------------------------------------------------------------------
+
+echo ">>> Installing VSCode extensions..."
+
+VSCODE_EXTENSIONS=(
+    "rust-lang.rust-analyzer"
+    "PKief.material-icon-theme"
+    "PKief.material-product-icons"
+)
+
+for ext in "${VSCODE_EXTENSIONS[@]}"; do
+    echo ">>> Installing extension: $ext"
+    code --install-extension "$ext" 2>/dev/null || \
+    flatpak run com.visualstudio.code --install-extension "$ext" 2>/dev/null || \
+        echo ">>> Could not install $ext - VSCode may not be available yet"
+done
+
+# -----------------------------------------------------------------------------
+# KDE Settings: Caps Lock as Ctrl
+# -----------------------------------------------------------------------------
+
+echo ">>> Configuring Caps Lock as Ctrl in KDE..."
+
+# KDE stores keyboard settings in kxkbrc
+mkdir -p ~/.config
+
+# Set Caps Lock as Ctrl using kwriteconfig6 (KDE 6) or kwriteconfig5 (KDE 5)
+if command_exists kwriteconfig6; then
+    kwriteconfig6 --file ~/.config/kxkbrc --group Layout --key Options "caps:ctrl_modifier"
+elif command_exists kwriteconfig5; then
+    kwriteconfig5 --file ~/.config/kxkbrc --group Layout --key Options "caps:ctrl_modifier"
+else
+    # Fallback: write directly to the config file
+    if [ -f ~/.config/kxkbrc ]; then
+        # Check if [Layout] section exists
+        if grep -q "^\[Layout\]" ~/.config/kxkbrc; then
+            # Update or add Options line
+            if grep -q "^Options=" ~/.config/kxkbrc; then
+                sed -i 's/^Options=.*/Options=caps:ctrl_modifier/' ~/.config/kxkbrc
+            else
+                sed -i '/^\[Layout\]/a Options=caps:ctrl_modifier' ~/.config/kxkbrc
+            fi
+        else
+            echo -e "\n[Layout]\nOptions=caps:ctrl_modifier" >> ~/.config/kxkbrc
+        fi
+    else
+        cat > ~/.config/kxkbrc << 'EOF'
+[Layout]
+Options=caps:ctrl_modifier
+EOF
+    fi
+fi
+
+echo ">>> Caps Lock will act as Ctrl after re-login or restart"
+
+# -----------------------------------------------------------------------------
+# KDE Custom Shortcut: Ctrl+Super+T for Ghostty
+# -----------------------------------------------------------------------------
+
+echo ">>> Adding Ctrl+Super+T shortcut for Ghostty..."
+
+# KDE custom shortcuts are stored in kglobalshortcutsrc and khotkeysrc
+SHORTCUTS_DIR="$HOME/.config"
+KHOTKEYS_FILE="$SHORTCUTS_DIR/khotkeysrc"
+
+# Launch ghostty inside the distrobox with zsh shell
+GHOSTTY_CMD="distrobox enter $DISTROBOX_NAME -- zsh -c ghostty"
+
+# Create/update khotkeysrc for custom shortcuts
+mkdir -p "$SHORTCUTS_DIR"
+
+# Check if khotkeysrc exists and has our shortcut
+if [ -f "$KHOTKEYS_FILE" ] && grep -q "Ghostty Terminal" "$KHOTKEYS_FILE"; then
+    echo ">>> Ghostty shortcut already configured"
+else
+    # Find the next available Data group number
+    if [ -f "$KHOTKEYS_FILE" ]; then
+        NEXT_NUM=$(grep -oP '^\[Data_\K[0-9]+' "$KHOTKEYS_FILE" 2>/dev/null | sort -n | tail -1)
+        NEXT_NUM=$((NEXT_NUM + 1))
+        # Also increment DataCount
+        CURRENT_COUNT=$(grep -oP '^DataCount=\K[0-9]+' "$KHOTKEYS_FILE" 2>/dev/null || echo "0")
+        NEW_COUNT=$((CURRENT_COUNT + 1))
+        sed -i "s/^DataCount=.*/DataCount=$NEW_COUNT/" "$KHOTKEYS_FILE"
+    else
+        NEXT_NUM=1
+        echo -e "[Data]\nDataCount=1\n" > "$KHOTKEYS_FILE"
+    fi
+
+    # Append the new shortcut configuration
+    cat >> "$KHOTKEYS_FILE" << EOF
+
+[Data_${NEXT_NUM}]
+Comment=Launch Ghostty Terminal
+Enabled=true
+Name=Ghostty Terminal
+Type=SIMPLE_ACTION_DATA
+
+[Data_${NEXT_NUM}Actions]
+ActionsCount=1
+
+[Data_${NEXT_NUM}Actions0]
+CommandURL=$GHOSTTY_CMD
+Type=COMMAND_URL
+
+[Data_${NEXT_NUM}Conditions]
+ConditionsCount=0
+
+[Data_${NEXT_NUM}Triggers]
+TriggersCount=1
+
+[Data_${NEXT_NUM}Triggers0]
+Key=Ctrl+Meta+T
+Type=SHORTCUT
+UUID={$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "ghostty-shortcut-$(date +%s)")}
+EOF
+
+    echo ">>> Added Ctrl+Super+T shortcut for Ghostty"
+fi
+
+# Reload KDE shortcuts (if possible)
+if command_exists qdbus6; then
+    qdbus6 org.kde.kglobalaccel /kglobalaccel reloadConfig 2>/dev/null || true
+elif command_exists qdbus; then
+    qdbus org.kde.kglobalaccel /kglobalaccel reloadConfig 2>/dev/null || true
+fi
+
+echo ">>> KDE shortcut may require re-login to take effect"
 
 # -----------------------------------------------------------------------------
 # Final notes
