@@ -17,14 +17,12 @@ local config = function()
 	lspconfig.lua_ls.setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
-		settings = { -- custom settings for lua
+		settings = {
 			Lua = {
-				-- make the language server recognize "vim" global
 				diagnostics = {
 					globals = { "vim" },
 				},
 				workspace = {
-					-- make language server aware of runtime files
 					library = {
 						[vim.fn.expand("$VIMRUNTIME/lua")] = true,
 						[vim.fn.stdpath("config") .. "/lua"] = true,
@@ -41,24 +39,37 @@ local config = function()
 		filetypes = { "json", "jsonc" },
 	})
 
-	-- python
+	-- python (pyright for type checking)
 	lspconfig.pyright.setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		settings = {
 			pyright = {
-				disableOrganizeImports = false,
+				disableOrganizeImports = true, -- use ruff for this
+			},
+			python = {
 				analysis = {
 					useLibraryCodeForTypes = true,
 					autoSearchPaths = true,
 					diagnosticMode = "workspace",
 					autoImportCompletions = true,
+					typeCheckingMode = "basic",
 				},
 			},
 		},
 	})
 
-	-- typescript
+	-- python (ruff for linting/formatting - fast, modern)
+	lspconfig.ruff.setup({
+		capabilities = capabilities,
+		on_attach = function(client, bufnr)
+			-- Disable hover in favor of pyright
+			client.server_capabilities.hoverProvider = false
+			on_attach(client, bufnr)
+		end,
+	})
+
+	-- typescript/javascript
 	lspconfig.ts_ls.setup({
 		on_attach = on_attach,
 		capabilities = capabilities,
@@ -75,26 +86,88 @@ local config = function()
 			typescript = {
 				indentStyle = "space",
 				indentSize = 2,
+				inlayHints = {
+					includeInlayParameterNameHints = "all",
+					includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+					includeInlayFunctionParameterTypeHints = true,
+					includeInlayVariableTypeHints = true,
+					includeInlayPropertyDeclarationTypeHints = true,
+					includeInlayFunctionLikeReturnTypeHints = true,
+					includeInlayEnumMemberValueHints = true,
+				},
+			},
+			javascript = {
+				inlayHints = {
+					includeInlayParameterNameHints = "all",
+					includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+					includeInlayFunctionParameterTypeHints = true,
+					includeInlayVariableTypeHints = true,
+					includeInlayPropertyDeclarationTypeHints = true,
+					includeInlayFunctionLikeReturnTypeHints = true,
+					includeInlayEnumMemberValueHints = true,
+				},
 			},
 		},
 		root_dir = lspconfig.util.root_pattern("package.json", "tsconfig.json", ".git"),
 	})
 
-	-- bash
+	-- eslint (better integration for JS/TS linting)
+	lspconfig.eslint.setup({
+		capabilities = capabilities,
+		on_attach = function(client, bufnr)
+			-- Auto-fix on save
+			vim.api.nvim_create_autocmd("BufWritePre", {
+				buffer = bufnr,
+				command = "EslintFixAll",
+			})
+			on_attach(client, bufnr)
+		end,
+		filetypes = {
+			"javascript",
+			"javascriptreact",
+			"typescript",
+			"typescriptreact",
+			"vue",
+			"svelte",
+		},
+	})
+
+	-- bash/zsh
 	lspconfig.bashls.setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
-		filetypes = { "sh", "aliasrc" },
+		filetypes = { "sh", "bash", "zsh" },
 	})
 
-	-- solidity
-	lspconfig.solidity.setup({
+	-- toml
+	lspconfig.taplo.setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
-		filetypes = { "solidity" },
+		settings = {
+			taplo = {
+				formatter = {
+					alignEntries = false,
+					alignComments = true,
+					arrayTrailingComma = true,
+					arrayAutoExpand = true,
+					arrayAutoCollapse = true,
+					compactArrays = true,
+					compactInlineTables = false,
+					indentTables = false,
+					reorderKeys = true,
+				},
+			},
+		},
 	})
 
-	-- typescriptreact, javascriptreact, css, sass, scss, less, svelte, vue
+	-- markdown
+	lspconfig.marksman.setup({
+		capabilities = capabilities,
+		on_attach = on_attach,
+		filetypes = { "markdown", "markdown.mdx" },
+	})
+
+	-- emmet for HTML/JSX
 	lspconfig.emmet_ls.setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
@@ -128,37 +201,27 @@ local config = function()
 		},
 	})
 
+	-- EFM for additional linting/formatting
 	local luacheck = require("efmls-configs.linters.luacheck")
 	local stylua = require("efmls-configs.formatters.stylua")
-	local flake8 = require("efmls-configs.linters.flake8")
-	local black = require("efmls-configs.formatters.black")
-	local eslint = require("efmls-configs.linters.eslint")
 	local prettier_d = require("efmls-configs.formatters.prettier_d")
 	local fixjson = require("efmls-configs.formatters.fixjson")
 	local shellcheck = require("efmls-configs.linters.shellcheck")
 	local shfmt = require("efmls-configs.formatters.shfmt")
 	local hadolint = require("efmls-configs.linters.hadolint")
-	local solhint = require("efmls-configs.linters.solhint")
-	local cpplint = require("efmls-configs.linters.cpplint")
 	local clangformat = require("efmls-configs.formatters.clang_format")
+	local cpplint = require("efmls-configs.linters.cpplint")
 
-	-- configure efm server
 	lspconfig.efm.setup({
 		filetypes = {
 			"lua",
-			"python",
 			"json",
 			"jsonc",
 			"sh",
-			"javascript",
-			"javascriptreact",
-			"typescript",
-			"typescriptreact",
-			"svelte",
-			"vue",
+			"bash",
+			"zsh",
 			"markdown",
 			"docker",
-			"solidity",
 			"html",
 			"css",
 			"c",
@@ -175,19 +238,13 @@ local config = function()
 		settings = {
 			languages = {
 				lua = { luacheck, stylua },
-				python = { flake8, black },
-				typescript = { eslint, prettier_d },
-				json = { eslint, fixjson },
-				jsonc = { eslint, fixjson },
+				json = { fixjson },
+				jsonc = { fixjson },
 				sh = { shellcheck, shfmt },
-				javascript = { eslint, prettier_d },
-				javascriptreact = { eslint, prettier_d },
-				typescriptreact = { eslint, prettier_d },
-				svelte = { eslint, prettier_d },
-				vue = { eslint, prettier_d },
+				bash = { shellcheck, shfmt },
+				zsh = { shellcheck, shfmt },
 				markdown = { prettier_d },
 				docker = { hadolint, prettier_d },
-				solidity = { solhint },
 				html = { prettier_d },
 				css = { prettier_d },
 				c = { clangformat, cpplint },

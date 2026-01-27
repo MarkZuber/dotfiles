@@ -4,34 +4,45 @@ local config = function()
 		indent = {
 			enable = true,
 		},
-		event = {
-			"BufReadPre",
-			"BufNewFile",
-		},
 		ensure_installed = {
-			"rust",
-			"markdown",
-			"json",
+			-- shells
+			"bash",
+			-- web
 			"javascript",
 			"typescript",
-			"yaml",
+			"tsx",
 			"html",
 			"css",
-			"markdown",
-			"bash",
-			"lua",
-			"dockerfile",
-			"solidity",
-			"gitignore",
-			"python",
+			"scss",
 			"vue",
 			"svelte",
+			-- data formats
+			"json",
+			"jsonc",
+			"yaml",
 			"toml",
+			-- documentation
+			"markdown",
+			"markdown_inline",
+			-- programming
+			"python",
+			"rust",
+			"lua",
+			"c",
+			"cpp",
+			-- config/other
+			"dockerfile",
+			"gitignore",
+			"gitcommit",
+			"diff",
+			"regex",
+			"vim",
+			"vimdoc",
 		},
 		auto_install = true,
 		highlight = {
 			enable = true,
-			additional_vim_regex_highlighting = true,
+			additional_vim_regex_highlighting = { "markdown" },
 		},
 		incremental_selection = {
 			enable = true,
@@ -49,4 +60,5 @@ return {
 	"nvim-treesitter/nvim-treesitter",
 	lazy = false,
 	config = config,
+	build = ":TSUpdate",
 }
