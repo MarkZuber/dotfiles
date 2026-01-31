@@ -8,13 +8,27 @@ local config = function()
 	local lspconfig = require("lspconfig")
 	local capabilities = cmp_nvim_lsp.default_capabilities()
 
+	local function get_setup(name)
+		if vim.lsp and vim.lsp.config and vim.lsp.config[name] and type(vim.lsp.config[name].setup) == "function" then
+			return vim.lsp.config[name].setup
+		end
+		local ok, mod = pcall(require, "lspconfig.server_configurations." .. name)
+		if ok and mod and type(mod.setup) == "function" then
+			return mod.setup
+		end
+		return nil
+	end
+
 	for type, icon in pairs(diagnostic_signs) do
 		local hl = "DiagnosticSign" .. type
 		vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
 	end
 
 	-- lua
-	lspconfig.lua_ls.setup({
+	do
+		local _setup = get_setup("lua_ls")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		settings = {
@@ -30,17 +44,27 @@ local config = function()
 				},
 			},
 		},
-	})
+			})
+		end
+	end
 
 	-- json
-	lspconfig.jsonls.setup({
+	do
+		local _setup = get_setup("jsonls")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		filetypes = { "json", "jsonc" },
-	})
+			})
+		end
+	end
 
 	-- python (pyright for type checking)
-	lspconfig.pyright.setup({
+	do
+		local _setup = get_setup("pyright")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		settings = {
@@ -57,20 +81,30 @@ local config = function()
 				},
 			},
 		},
-	})
+			})
+		end
+	end
 
 	-- python (ruff for linting/formatting - fast, modern)
-	lspconfig.ruff.setup({
+	do
+		local _setup = get_setup("ruff")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = function(client, bufnr)
 			-- Disable hover in favor of pyright
 			client.server_capabilities.hoverProvider = false
 			on_attach(client, bufnr)
 		end,
-	})
+			})
+		end
+	end
 
 	-- typescript/javascript
-	lspconfig.ts_ls.setup({
+	do
+		local _setup = get_setup("ts_ls")
+		if _setup then
+			_setup({
 		on_attach = on_attach,
 		capabilities = capabilities,
 		filetypes = {
@@ -109,10 +143,15 @@ local config = function()
 			},
 		},
 		root_dir = lspconfig.util.root_pattern("package.json", "tsconfig.json", ".git"),
-	})
+			})
+		end
+	end
 
 	-- eslint (better integration for JS/TS linting)
-	lspconfig.eslint.setup({
+	do
+		local _setup = get_setup("eslint")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = function(client, bufnr)
 			-- Auto-fix on save
@@ -130,17 +169,27 @@ local config = function()
 			"vue",
 			"svelte",
 		},
-	})
+			})
+		end
+	end
 
 	-- bash/zsh
-	lspconfig.bashls.setup({
+	do
+		local _setup = get_setup("bashls")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		filetypes = { "sh", "bash", "zsh" },
-	})
+			})
+		end
+	end
 
 	-- toml
-	lspconfig.taplo.setup({
+	do
+		local _setup = get_setup("taplo")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		settings = {
@@ -158,17 +207,27 @@ local config = function()
 				},
 			},
 		},
-	})
+			})
+		end
+	end
 
 	-- markdown
-	lspconfig.marksman.setup({
+	do
+		local _setup = get_setup("marksman")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		filetypes = { "markdown", "markdown.mdx" },
-	})
+			})
+		end
+	end
 
 	-- emmet for HTML/JSX
-	lspconfig.emmet_ls.setup({
+	do
+		local _setup = get_setup("emmet_ls")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		filetypes = {
@@ -183,23 +242,35 @@ local config = function()
 			"vue",
 			"html",
 		},
-	})
+			})
+		end
+	end
 
 	-- docker
-	lspconfig.dockerls.setup({
+	do
+		local _setup = get_setup("dockerls")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
-	})
+			})
+		end
+	end
 
 	-- C/C++
-	lspconfig.clangd.setup({
+	do
+		local _setup = get_setup("clangd")
+		if _setup then
+			_setup({
 		capabilities = capabilities,
 		on_attach = on_attach,
 		cmd = {
 			"clangd",
 			"--offset-encoding=utf-16",
 		},
-	})
+			})
+		end
+	end
 
 	-- EFM for additional linting/formatting
 	local luacheck = require("efmls-configs.linters.luacheck")
@@ -212,7 +283,10 @@ local config = function()
 	local clangformat = require("efmls-configs.formatters.clang_format")
 	local cpplint = require("efmls-configs.linters.cpplint")
 
-	lspconfig.efm.setup({
+	do
+		local _setup = get_setup("efm")
+		if _setup then
+			_setup({
 		filetypes = {
 			"lua",
 			"json",
@@ -251,7 +325,9 @@ local config = function()
 				cpp = { clangformat, cpplint },
 			},
 		},
-	})
+			})
+		end
+	end
 end
 
 return {

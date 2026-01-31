@@ -35,5 +35,5 @@ return {
 			vim.cmd("Hardtime enable")
 		end
 	end,
-	dependencies = "rcarriga/nvim-dap-ui",
+	dependencies = { "rcarriga/nvim-dap-ui", "nvim-neotest/nvim-nio" },
 }

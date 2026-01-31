@@ -122,6 +122,15 @@ PACMAN_PACKAGES=(
     libxkbcommon
     pkg-config
     base-devel
+    steam
+    alsa-scarlett-gui
+    lutris
+    luarocks 
+    luacheck 
+    nodejs 
+    npm 
+    python-pip
+    python-pynvim
 )
 
 for pkg in "${PACMAN_PACKAGES[@]}"; do
@@ -244,14 +253,14 @@ fc-cache -fv
 # Set zsh as default shell
 # -----------------------------------------------------------------------------
 
-echo ">>> Setting zsh as default shell..."
-if [ "$SHELL" != "/bin/zsh" ] && [ "$SHELL" != "/usr/bin/zsh" ]; then
-    chsh -s /bin/zsh 2>/dev/null || \
-    sudo usermod -s /bin/zsh "$USER" 2>/dev/null || \
-    echo ">>> Note: Run 'chsh -s /bin/zsh' manually to change shell"
-else
-    echo ">>> zsh is already the default shell"
-fi
+# echo ">>> Setting zsh as default shell..."
+# if [ "$SHELL" != "/bin/zsh" ] && [ "$SHELL" != "/usr/bin/zsh" ]; then
+#     chsh -s /bin/zsh 2>/dev/null || \
+#     sudo usermod -s /bin/zsh "$USER" 2>/dev/null || \
+#     echo ">>> Note: Run 'chsh -s /bin/zsh' manually to change shell"
+# else
+#     echo ">>> zsh is already the default shell"
+# fi
 
 # -----------------------------------------------------------------------------
 # Oh-My-Zsh and plugins
