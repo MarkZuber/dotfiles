@@ -77,7 +77,7 @@ distrobox_run sudo dnf install -y \
     fzf \
     ripgrep \
     bat \
-    neofetch \
+    fastfetch \
     unzip \
     curl \
     wget \
@@ -142,7 +142,9 @@ distrobox_run bash -c '
     if [ ! -d "$HOME/.nvm" ]; then
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
     fi
+'
 
+distrobox_run bash -c '
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
@@ -151,7 +153,7 @@ distrobox_run bash -c '
     nvm use --lts
 
     # Install global npm packages
-    npm install -g typescript ts-node prettier eslint
+    sudo npm install -g typescript ts-node prettier eslint
 '
 
 # -----------------------------------------------------------------------------
@@ -342,7 +344,7 @@ make_link "$VSCODE_SETTINGS_SRC" ~/.var/app/com.visualstudio.code-insiders/confi
 echo ">>> Exporting CLI tools from distrobox to host..."
 
 # Export commonly used CLI tools so they're accessible on the host
-for tool in nvim tmux fzf rg bat lsd neofetch; do
+for tool in nvim tmux fzf rg bat lsd fastfetch; do
     distrobox enter "$DISTROBOX_NAME" -- distrobox-export --bin "/usr/bin/$tool" --export-path ~/.local/bin 2>/dev/null || true
 done
 
@@ -511,9 +513,9 @@ echo '     "editor.fontFamily": "Comic Shanns Mono"'
 echo '     "terminal.integrated.fontFamily": "CaskaydiaCove Nerd Font Mono"'
 echo ""
 
-# Show off if neofetch is exported
-if [ -x ~/.local/bin/neofetch ]; then
-    ~/.local/bin/neofetch
-elif command_exists neofetch; then
-    neofetch
+# Show off if fastfetch is exported
+if [ -x ~/.local/bin/fastfetch ]; then
+    ~/.local/bin/fastfetch
+elif command_exists fastfetch; then
+    fastfetch
 fi
