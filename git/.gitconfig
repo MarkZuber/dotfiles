@@ -86,6 +86,7 @@ name = Mark Zuber
 helper = store
 	helper =
 	helper = /usr/bin/git-credential-manager
+	helper = store
 [pull]
 rebase = true
 [core]
@@ -112,9 +113,11 @@ rebase = true
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
-[credential "https://dev.azure.com"]
-	useHttpPath = true
+# [credential "https://dev.azure.com"]
+# 	useHttpPath = true
 [diff "tool.vscode"]
 	cmd = code-fb --wait --diff $LOCAL $REMOTE
 [init]
 	defaultBranch = main
+
+
