@@ -85,7 +85,7 @@ name = Mark Zuber
 [credential]
 helper = store
 	helper =
-	helper = /usr/local/share/gcm-core/git-credential-manager
+	helper = /usr/bin/git-credential-manager
 [pull]
 rebase = true
 [core]
