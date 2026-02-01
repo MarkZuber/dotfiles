@@ -136,8 +136,6 @@ PACMAN_PACKAGES=(
     git-delta
 )
 
-# add comment to test
-
 for pkg in "${PACMAN_PACKAGES[@]}"; do
     install_if_missing "$pkg"
 done
