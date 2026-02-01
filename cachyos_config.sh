@@ -131,6 +131,9 @@ PACMAN_PACKAGES=(
     npm 
     python-pip
     python-pynvim
+    xone-dkms 
+    xone-dongle-firmware
+    git-delta
 )
 
 for pkg in "${PACMAN_PACKAGES[@]}"; do
