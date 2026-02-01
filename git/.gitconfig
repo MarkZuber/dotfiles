@@ -83,10 +83,9 @@ untracked = cyan
 name = Mark Zuber
 	email = zube@meta.com
 [credential]
-helper = store
-	helper =
 	helper = /usr/bin/git-credential-manager
 	helper = store
+	credentialStore = ~/.git-credentials
 [pull]
 rebase = true
 [core]
