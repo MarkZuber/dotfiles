@@ -81,7 +81,7 @@ changed = green
 untracked = cyan
 [user]
 name = Mark Zuber
-	email = zube@meta.com
+	email = mark@zube.com
 [credential]
 	helper = /usr/bin/git-credential-manager
 	helper = store
