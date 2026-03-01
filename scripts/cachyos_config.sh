@@ -6,10 +6,9 @@
 # All installations happen natively using pacman and yay (AUR helper).
 #
 # First thing to do is:
-# mkdir -p ~/repos
-# cd ~/repos
+# cd ~
 # git clone https://github.com/markzuber/dotfiles
-# then run ~/repos/dotfiles/cachyos_config.sh
+# then run ~/dotfiles/cachyos_config.sh
 
 set -e
 
@@ -125,13 +124,13 @@ PACMAN_PACKAGES=(
     steam
     alsa-scarlett-gui
     lutris
-    luarocks 
-    luacheck 
-    nodejs 
-    npm 
+    luarocks
+    luacheck
+    nodejs
+    npm
     python-pip
     python-pynvim
-    xone-dkms 
+    xone-dkms
     xone-dongle-firmware
     git-delta
 )
