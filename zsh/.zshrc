@@ -174,6 +174,9 @@ alias cd.....='cd ../../../..'
 
 . "$HOME/.cargo/env"
 
+alias c="code"
+alias ci="code-insiders"
+
 alias cdh="cd ~/"
 alias cdhome="cdh"
 alias cdr="cd /"
@@ -397,6 +400,7 @@ alias map="xargs -n1"
 # fortune -s | cowsay | lolcat
 
 alias sshpi="ssh pi@192.168.2.203"
+alias sshdev="ssh 192.168.2.197"
 alias gcma="git checkout main"
 alias gcmas="git checkout master"
 alias gpfix="git a; git com 'fix'; git push"
