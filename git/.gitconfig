@@ -7,16 +7,13 @@ prompt = false
 [push]
 default = simple
 
-[difftool "vscode"]
-cmd = "code --wait --diff  "
-
 [diff]
 	tool = vscode
 
 [alias]
 cemail = config --get user.email
-d = difftool --dir-diff
-dc = difftool --dir-diff --cached
+d = difftool
+dc = difftool --cached
 a = add -A
 b = branch
 c = checkout
@@ -82,14 +79,12 @@ untracked = cyan
 [user]
 name = Mark Zuber
 	email = mark@zube.com
-[credential]
-	helper = /usr/local/bin/git-credential-manager
-	helper = store
-	credentialStore = ~/.git-credentials
+[include]
+	path = ~/.gitconfig-local
 [pull]
 rebase = true
 [core]
-	editor = code-fb --wait --new-window
+	editor = code --wait --new-window
 	pager = delta
 
 [interactive]
@@ -114,8 +109,8 @@ rebase = true
 	required = true
 # [credential "https://dev.azure.com"]
 # 	useHttpPath = true
-[diff "tool.vscode"]
-	cmd = code-fb --wait --diff $LOCAL $REMOTE
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
 [init]
 	defaultBranch = main
 

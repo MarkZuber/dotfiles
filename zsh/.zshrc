@@ -404,6 +404,7 @@ alias sshdev="ssh 192.168.2.197"
 alias gcma="git checkout main"
 alias gcmas="git checkout master"
 alias gpfix="git a; git com 'fix'; git push"
+alias gdc="git diff --cached"
 
 alias rg="rg --hidden --glob '!.git'"
 
