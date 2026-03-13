@@ -1,0 +1,505 @@
+#!/usr/bin/env bash
+# wt - git worktree manager with Claude Code agent support
+#
+# USAGE:
+#   wt new <name> [base-branch]   Create a worktree + branch, optionally launch agent
+#   wt list                       List all worktrees with branch/status
+#   wt rm <name> [--keep-branch]  Remove a worktree (and its branch)
+#   wt pr <name> [--draft] [--title <title>]  Create a PR for a worktree's branch
+#   wt agent <name> [prompt...]   Launch Claude Code in a worktree
+#   wt sync <name>                Rebase worktree branch onto its base
+#   wt path <name>                Print the worktree's filesystem path
+#   wt status                     Show git status of all worktrees
+#   wt open <name>                Open worktree in a new tmux window
+
+set -euo pipefail
+
+# ── colors ────────────────────────────────────────────────────────────────────
+bold()   { printf '\033[1m%s\033[0m' "$*"; }
+green()  { printf '\033[32m%s\033[0m' "$*"; }
+yellow() { printf '\033[33m%s\033[0m' "$*"; }
+red()    { printf '\033[31m%s\033[0m' "$*"; }
+blue()   { printf '\033[34m%s\033[0m' "$*"; }
+cyan()   { printf '\033[36m%s\033[0m' "$*"; }
+dim()    { printf '\033[2m%s\033[0m' "$*"; }
+die()    { printf '%s: %s\n' "$(red "error")" "$*" >&2; exit 1; }
+info()   { printf '%s %s\n' "$(blue "→")" "$*"; }
+ok()     { printf '%s %s\n' "$(green "✓")" "$*"; }
+warn()   { printf '%s %s\n' "$(yellow "⚠")" "$*"; }
+
+# ── Ghostty helpers ───────────────────────────────────────────────────────────
+
+# Escape a value for embedding in an AppleScript double-quoted string
+as_str() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+# Open a shell command in Ghostty via AppleScript.
+# Usage: ghostty_open <wt_path> <shell_cmd> [mode]
+# mode: window (default) | tab | split | split-down
+# WT_GHOSTTY_MODE env var sets the default mode.
+ghostty_open() {
+  local wt_path="$1" shell_cmd="$2"
+  local mode="${3:-${WT_GHOSTTY_MODE:-window}}"
+  local label; label="$(basename "$wt_path")"
+  local as_path; as_path="$(as_str "$wt_path")"
+  local as_cmd; as_cmd="$(as_str "$shell_cmd")"
+
+  case "$mode" in
+    tab)
+      osascript << EOF
+tell application "Ghostty"
+  activate
+  set cfg to new surface configuration from {initial working directory:"$as_path", initial input:"$as_cmd" & return}
+  new tab in front window with configuration cfg
+end tell
+EOF
+      ok "opened Ghostty tab for '$label'"
+      ;;
+    split|split-right)
+      osascript << EOF
+tell application "Ghostty"
+  activate
+  set cfg to new surface configuration from {initial working directory:"$as_path", initial input:"$as_cmd" & return}
+  set tgt to focused terminal of selected tab of front window
+  split tgt direction right with configuration cfg
+end tell
+EOF
+      ok "opened Ghostty split-right for '$label'"
+      ;;
+    split-down)
+      osascript << EOF
+tell application "Ghostty"
+  activate
+  set cfg to new surface configuration from {initial working directory:"$as_path", initial input:"$as_cmd" & return}
+  set tgt to focused terminal of selected tab of front window
+  split tgt direction down with configuration cfg
+end tell
+EOF
+      ok "opened Ghostty split-down for '$label'"
+      ;;
+    window|*)
+      open -na Ghostty.app --args -e "zsh -c $(printf '%q' "$shell_cmd; exec zsh")"
+      ok "opened Ghostty window for '$label'"
+      ;;
+  esac
+}
+
+# ── git helpers ───────────────────────────────────────────────────────────────
+git_root() {
+  git rev-parse --show-toplevel 2>/dev/null || die "not inside a git repository"
+}
+
+repo_name() {
+  basename "$(git_root)"
+}
+
+# Worktrees live at a sibling directory: <parent>/<repo>-wt/<name>
+worktrees_base() {
+  local override="${WT_BASE:-}"
+  if [[ -n "$override" ]]; then
+    echo "$override"
+  else
+    echo "$(dirname "$(git_root)")/$(repo_name)-wt"
+  fi
+}
+
+worktree_path() {
+  echo "$(worktrees_base)/$1"
+}
+
+default_base_branch() {
+  local root; root="$(git_root)"
+  git -C "$root" show-ref --verify --quiet refs/heads/main 2>/dev/null && echo "main" && return
+  git -C "$root" show-ref --verify --quiet refs/heads/master 2>/dev/null && echo "master" && return
+  git -C "$root" rev-parse --abbrev-ref HEAD
+}
+
+worktree_exists() {
+  git worktree list --porcelain | grep -q "worktree $(worktree_path "$1")$"
+}
+
+branch_for_worktree() {
+  local wt_path; wt_path="$(worktree_path "$1")"
+  git worktree list --porcelain | awk -v p="worktree $wt_path" '
+    /^worktree / { in_wt = ($0 == p) }
+    /^branch /  && in_wt { sub(/^branch refs\/heads\//, ""); print; exit }
+  '
+}
+
+# ── subcommands ───────────────────────────────────────────────────────────────
+
+cmd_new() {
+  local name="" base="" launch_agent=0 agent_prompt="" mode=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --claude|-c)        launch_agent=1; shift ;;
+      --prompt|-p)        shift; agent_prompt="$1"; shift ;;
+      --prompt-file|-f)   shift
+                          [[ -f "$1" ]] || die "prompt file not found: $1"
+                          agent_prompt="$(<"$1")"
+                          shift ;;
+      --tab)              mode="tab"; launch_agent=1; shift ;;
+      --split)            mode="split"; launch_agent=1; shift ;;
+      --split-down)       mode="split-down"; launch_agent=1; shift ;;
+      --window)           mode="window"; launch_agent=1; shift ;;
+      -*) die "unknown flag: $1" ;;
+      *)  [[ -z "$name" ]] && name="$1" || base="$1"; shift ;;
+    esac
+  done
+
+  [[ -z "$name" ]] && die "usage: wt new <name> [base-branch] [--claude] [--prompt <text>] [--prompt-file <file>]"
+  base="${base:-$(default_base_branch)}"
+
+  local wt_path; wt_path="$(worktree_path "$name")"
+  [[ -d "$wt_path" ]] && die "worktree '$name' already exists at $wt_path"
+
+  local root; root="$(git_root)"
+
+  # Fetch latest so we branch from up-to-date origin
+  info "fetching origin/$base …"
+  git -C "$root" fetch origin "$base" --quiet 2>/dev/null || warn "fetch failed, using local $base"
+
+  info "creating branch '$name' from '$base' …"
+  git -C "$root" worktree add -b "$name" "$wt_path" "origin/$base" 2>/dev/null \
+    || git -C "$root" worktree add -b "$name" "$wt_path" "$base"
+
+  # Store the base branch so sync/pr can reference it
+  git -C "$wt_path" config worktree.base "$base"
+
+  ok "worktree ready at $(cyan "$wt_path")"
+  echo "   branch: $(bold "$name")"
+  echo "   base:   $base"
+  echo ""
+  echo "   cd into it:  $(dim "cd \$(wt path $name)")"
+  echo "   launch agent: $(dim "wt agent $name")"
+
+  if [[ $launch_agent -eq 1 ]]; then
+    echo ""
+    cmd_agent ${mode:+"--$mode"} "$name" ${agent_prompt:+"$agent_prompt"}
+  fi
+}
+
+cmd_list() {
+  local root; root="$(git_root)"
+  local base_path; base_path="$(worktrees_base)"
+
+  printf '\n%-22s %-30s %-12s %s\n' "$(bold NAME)" "$(bold BRANCH)" "$(bold BASE)" "$(bold PATH)"
+  printf '%s\n' "$(dim "──────────────────────────────────────────────────────────────────────────")"
+
+  git -C "$root" worktree list --porcelain | awk '
+    /^worktree / { path=$2 }
+    /^branch /   { branch=$2; sub(/^refs\/heads\//, "", branch) }
+    /^$/         { if (path != "") print path "|" branch; path=""; branch="" }
+    END          { if (path != "") print path "|" branch }
+  ' | while IFS='|' read -r path branch; do
+    local name
+    if [[ "$path" == "$root" ]]; then
+      name="$(dim "(main)")"
+    else
+      name="$(basename "$path")"
+    fi
+
+    local base=""
+    if [[ -d "$path/.git" ]] || [[ -f "$path/.git" ]]; then
+      base="$(git -C "$path" config worktree.base 2>/dev/null || echo "")"
+    fi
+
+    # Dirty indicator
+    local dirty=""
+    if [[ -d "$path" ]]; then
+      local status_out
+      status_out="$(git -C "$path" status --porcelain 2>/dev/null)"
+      [[ -n "$status_out" ]] && dirty="$(yellow " *")"
+    fi
+
+    printf '%-22s %-30s %-12s %s\n' \
+      "${name}${dirty}" \
+      "${branch:-$(dim "(detached)")}" \
+      "${base:-$(dim "—")}" \
+      "$(dim "$path")"
+  done
+
+  echo ""
+}
+
+cmd_rm() {
+  local name="" keep_branch=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --keep-branch|-k) keep_branch=1; shift ;;
+      -*) die "unknown flag: $1" ;;
+      *) name="$1"; shift ;;
+    esac
+  done
+
+  [[ -z "$name" ]] && die "usage: wt rm <name> [--keep-branch]"
+
+  local wt_path; wt_path="$(worktree_path "$name")"
+  local root; root="$(git_root)"
+  local branch; branch="$(branch_for_worktree "$name")"
+
+  if ! git -C "$root" worktree list --porcelain | grep -q "worktree $wt_path"; then
+    die "no worktree named '$name' found"
+  fi
+
+  info "removing worktree '$name' …"
+  git -C "$root" worktree remove "$wt_path" --force
+
+  if [[ $keep_branch -eq 0 ]] && [[ -n "$branch" ]]; then
+    info "deleting branch '$branch' …"
+    git -C "$root" branch -D "$branch" 2>/dev/null && ok "branch '$branch' deleted" \
+      || warn "could not delete branch '$branch' (may be pushed; delete manually)"
+  fi
+
+  ok "worktree '$name' removed"
+}
+
+cmd_pr() {
+  local name="" draft=0 title=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --draft|-d)  draft=1; shift ;;
+      --title|-t)  shift; title="$1"; shift ;;
+      -*) die "unknown flag: $1" ;;
+      *)  name="$1"; shift ;;
+    esac
+  done
+
+  [[ -z "$name" ]] && die "usage: wt pr <name> [--draft] [--title <title>]"
+
+  local wt_path; wt_path="$(worktree_path "$name")"
+  [[ -d "$wt_path" ]] || die "worktree '$name' not found at $wt_path"
+
+  local branch; branch="$(branch_for_worktree "$name")"
+  [[ -z "$branch" ]] && die "could not determine branch for worktree '$name'"
+
+  local base; base="$(git -C "$wt_path" config worktree.base 2>/dev/null || default_base_branch)"
+
+  # Push the branch
+  info "pushing branch '$branch' to origin …"
+  git -C "$wt_path" push -u origin "$branch"
+
+  if command -v gh &>/dev/null; then
+    local gh_args=("pr" "create" "--base" "$base" "--head" "$branch")
+    [[ $draft -eq 1 ]] && gh_args+=("--draft")
+    [[ -n "$title" ]] && gh_args+=("--title" "$title") || gh_args+=("--fill")
+    info "creating PR via gh …"
+    gh -C "$wt_path" "${gh_args[@]}"
+  else
+    local remote_url; remote_url="$(git -C "$wt_path" remote get-url origin 2>/dev/null || echo "")"
+    local compare_url=""
+    if [[ "$remote_url" =~ github.com[:/](.+/.+)(\.git)?$ ]]; then
+      local repo_slug="${BASH_REMATCH[1]%.git}"
+      compare_url="https://github.com/$repo_slug/compare/$base...$branch?expand=1"
+      [[ $draft -eq 1 ]] && compare_url+="&draft=1"
+    fi
+
+    ok "branch pushed. Create PR at:"
+    if [[ -n "$compare_url" ]]; then
+      echo "   $(cyan "$compare_url")"
+      # Try to open in browser
+      command -v open &>/dev/null && open "$compare_url"
+    else
+      echo "   push complete; open your git host to create the PR"
+      echo "   branch: $branch  →  base: $base"
+    fi
+  fi
+}
+
+cmd_agent() {
+  local name="" mode="${WT_GHOSTTY_MODE:-window}" prompt_file=""
+  local prompt_parts=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --tab)              mode="tab"; shift ;;
+      --split)            mode="split"; shift ;;
+      --split-down)       mode="split-down"; shift ;;
+      --window)           mode="window"; shift ;;
+      --prompt-file|-f)   shift
+                          [[ -f "$1" ]] || die "prompt file not found: $1"
+                          prompt_file="$1"; shift ;;
+      -*) die "unknown flag: $1" ;;
+      *) [[ -z "$name" ]] && name="$1" || prompt_parts+=("$1"); shift ;;
+    esac
+  done
+
+  [[ -z "$name" ]] && die "usage: wt agent [--tab|--split|--split-down|--window] [--prompt-file <file>] <name> [prompt...]"
+
+  local wt_path; wt_path="$(worktree_path "$name")"
+  [[ -d "$wt_path" ]] || die "worktree '$name' not found at $wt_path"
+
+  local prompt
+  if [[ -n "$prompt_file" ]]; then
+    prompt="$(<"$prompt_file")"
+  else
+    prompt="${prompt_parts[*]:-}"
+  fi
+  local branch; branch="$(branch_for_worktree "$name")"
+  info "launching Claude in worktree '$(bold "$name")' (branch: $branch)"
+
+  # Build the shell command (no cd needed — ghostty_open sets working dir)
+  local shell_cmd
+  if [[ -n "$prompt" ]]; then
+    shell_cmd="claude --print $(printf '%q' "$prompt") && claude"
+  else
+    shell_cmd="claude"
+  fi
+
+  # ── tmux (always new window; ignores --tab/--split since tmux has its own model) ──
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux new-window -n "wt:$name" "cd $(printf '%q' "$wt_path") && $shell_cmd"
+    ok "opened tmux window 'wt:$name'"
+
+  # ── macOS ──────────────────────────────────────────────────────────────────
+  elif [[ "$(uname)" == "Darwin" ]]; then
+    # Ghostty (detected by $TERM_PROGRAM or $GHOSTTY_BIN_DIR)
+    if [[ "${TERM_PROGRAM:-}" == "ghostty" ]] || [[ -n "${GHOSTTY_BIN_DIR:-}" ]]; then
+      ghostty_open "$wt_path" "$shell_cmd" "$mode"
+
+    # Terminal.app fallback (window only)
+    elif command -v osascript &>/dev/null; then
+      local full_cmd="cd $(printf '%q' "$wt_path") && $shell_cmd"
+      local escaped_cmd; escaped_cmd="$(as_str "$full_cmd")"
+      osascript -e "tell application \"Terminal\" to activate" \
+                -e "tell application \"Terminal\" to do script \"$escaped_cmd\""
+      ok "opened Terminal.app window for '$name'"
+
+    else
+      warn "could not detect a supported terminal; run manually:"
+      echo "  cd $(printf '%q' "$wt_path") && $shell_cmd"
+    fi
+
+  # ── other (Linux etc.) ─────────────────────────────────────────────────────
+  else
+    warn "no tmux session and not on macOS; run manually:"
+    echo "  cd $(printf '%q' "$wt_path") && $shell_cmd"
+  fi
+}
+
+cmd_sync() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && die "usage: wt sync <name>"
+
+  local wt_path; wt_path="$(worktree_path "$name")"
+  [[ -d "$wt_path" ]] || die "worktree '$name' not found"
+
+  local base; base="$(git -C "$wt_path" config worktree.base 2>/dev/null || default_base_branch)"
+
+  info "fetching origin/$base …"
+  git -C "$wt_path" fetch origin "$base"
+
+  info "rebasing onto origin/$base …"
+  git -C "$wt_path" rebase "origin/$base"
+
+  ok "worktree '$name' is up to date with $base"
+}
+
+cmd_path() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && die "usage: wt path <name>"
+  local p; p="$(worktree_path "$name")"
+  [[ -d "$p" ]] || die "worktree '$name' not found at $p"
+  echo "$p"
+}
+
+cmd_status() {
+  local root; root="$(git_root)"
+
+  git -C "$root" worktree list --porcelain | awk '/^worktree / {print $2}' | while read -r path; do
+    local label
+    [[ "$path" == "$root" ]] && label="$(bold "(main repo)")" || label="$(bold "$(basename "$path")")"
+    echo ""
+    printf '%s  %s\n' "$(cyan "▶")" "$label  $(dim "$path")"
+    echo "$(dim "   ─────────────────────────────────────────")"
+    git -C "$path" status --short | sed 's/^/   /' || echo "   $(dim "(clean)")"
+  done
+  echo ""
+}
+
+cmd_open() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && die "usage: wt open <name>"
+  cmd_agent "$name"
+}
+
+# ── help ──────────────────────────────────────────────────────────────────────
+cmd_help() {
+  cat <<EOF
+
+$(bold "wt") — git worktree manager with Claude Code agent support
+
+$(bold USAGE)
+  wt new <name> [base]           Create worktree + branch from [base] (default: main)
+       --claude, -c              Also launch Claude after creation
+       --prompt, -p <text>       Send initial prompt to Claude on launch
+       --prompt-file, -f <file>  Read initial prompt from a markdown file
+       --tab                     Open Claude in a new Ghostty tab
+       --split                   Open Claude in a Ghostty split (right)
+       --split-down              Open Claude in a Ghostty split (down)
+       --window                  Open Claude in a new Ghostty window (default)
+
+  wt switch <name>               cd into a worktree (shell function in .zshrc)
+  wt list                        List all worktrees with branch and base info
+  wt status                      Show git status of every worktree
+  wt path <name>                 Print path  (use: cd \$(wt path <name>))
+  wt sync <name>                 Rebase worktree branch onto its base branch
+  wt rm <name>                   Remove worktree and delete its branch
+       --keep-branch, -k         Keep the branch after removing the worktree
+  wt pr <name>                   Push branch and open a pull request
+       --draft, -d               Mark PR as draft
+       --title, -t <title>       Set PR title
+  wt agent <name> [prompt...]    Launch Claude Code in the worktree
+       --prompt-file, -f <file>  Read initial prompt from a markdown file
+       --tab                     New Ghostty tab
+       --split                   Ghostty split-right
+       --split-down              Ghostty split-down
+       --window                  New Ghostty window (default)
+  wt open <name>                 Alias for wt agent
+
+$(bold ENVIRONMENT)
+  WT_BASE          Override the parent directory for worktrees
+                   (default: sibling dir  ../<repo>-wt/)
+  WT_GHOSTTY_MODE  Default open mode for Ghostty: window | tab | split | split-down
+                   (default: window; overridden per-call by --tab/--split/etc.)
+
+$(bold EXAMPLES)
+  wt new feature/auth            Create worktree from main, branch = feature/auth
+  wt new fix-crash develop       Create from develop branch
+  wt new ui-redesign --claude    Create + immediately launch Claude
+  wt agent ui-redesign "Refactor the login form to use shadcn"
+  wt pr ui-redesign --draft
+  cd \$(wt path feature/auth)
+  wt sync feature/auth
+  wt rm feature/auth
+
+$(bold "PR NOTES")
+  Requires $(bold gh) (GitHub CLI) for full PR creation. If gh is absent,
+  wt will push the branch and open the compare URL in your browser.
+
+EOF
+}
+
+# ── dispatch ──────────────────────────────────────────────────────────────────
+main() {
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+    new)    cmd_new    "$@" ;;
+    list|ls) cmd_list   "$@" ;;
+    rm|remove) cmd_rm   "$@" ;;
+    pr)     cmd_pr     "$@" ;;
+    agent)  cmd_agent  "$@" ;;
+    sync)   cmd_sync   "$@" ;;
+    path)   cmd_path   "$@" ;;
+    status) cmd_status "$@" ;;
+    open)   cmd_open   "$@" ;;
+    help|--help|-h) cmd_help ;;
+    *) echo "$(red "unknown command"): $cmd"; cmd_help; exit 1 ;;
+  esac
+}
+
+main "$@"

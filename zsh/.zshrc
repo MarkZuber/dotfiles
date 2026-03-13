@@ -10,7 +10,7 @@ fi
 
 # Add ~/.local/bin for distrobox-exported binaries (lsd, ghostty, etc.)
 # Add ~/.cargo/bin for cargo-installed tools (lsd via cargo)
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/dotfiles/scripts/claude:$PATH"
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -407,6 +407,15 @@ alias gpfix="git a; git com 'fix'; git push"
 alias gdc="git diff --cached"
 
 alias rg="rg --hidden --glob '!.git'"
+
+# wt switch <name> — cd into a worktree (must be a shell function to affect current session)
+wt() {
+  if [[ "$1" == "switch" || "$1" == "sw" ]]; then
+    cd "$(command wt path "${2:?usage: wt switch <name>}")"
+  else
+    command wt "$@"
+  fi
+}
 
 # source script from the same directory as this file
 if [[ -f ~/.zube-at-work ]]; then
