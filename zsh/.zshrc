@@ -110,6 +110,7 @@ export DISABLE_UPDATE_PROMPT=true
 plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions fzf-tab z)
 
 fpath+=${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src
+fpath+=$HOME/dotfiles/scripts/claude
 # TODO: this was the old way, make sure we're not breaking by removing
 # plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions z)
 # source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
@@ -411,7 +412,11 @@ alias rg="rg --hidden --glob '!.git'"
 # wt switch <name> — cd into a worktree (must be a shell function to affect current session)
 wt() {
   if [[ "$1" == "switch" || "$1" == "sw" ]]; then
-    cd "$(command wt path "${2:?usage: wt switch <name>}")"
+    if [[ -n "${2:-}" ]]; then
+      cd "$(command wt path "$2")"
+    else
+      cd "$(git worktree list --porcelain | awk '/^worktree / { print $2; exit }')"
+    fi
   else
     command wt "$@"
   fi
