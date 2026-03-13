@@ -1,0 +1,96 @@
+#compdef wt
+
+# Zsh completion for the wt worktree manager.
+# Lives alongside the wt script so the same fpath entry covers both.
+
+_wt_worktrees() {
+  local -a worktrees
+  worktrees=($(git worktree list --porcelain 2>/dev/null | awk '
+    /^branch / { sub(/^refs\/heads\//, "", $2); print $2 }
+  '))
+  compadd -a worktrees
+}
+
+_wt_branches() {
+  local -a branches
+  branches=($(git branch --format='%(refname:short)' 2>/dev/null))
+  compadd -a branches
+}
+
+_wt_commands() {
+  local -a commands
+  commands=(
+    'new:create worktree + branch'
+    'list:list all worktrees'
+    'ls:list all worktrees'
+    'status:show git status of all worktrees'
+    'switch:cd into a worktree (no arg = main repo)'
+    'sw:cd into a worktree (alias for switch)'
+    'rm:remove a worktree and its branch'
+    'remove:remove a worktree and its branch'
+    'pr:push branch and open a pull request'
+    'agent:launch Claude Code in a worktree'
+    'open:launch Claude Code in a worktree (alias for agent)'
+    'sync:rebase worktree branch onto its base'
+    'path:print worktree filesystem path'
+    'help:show help'
+  )
+  _describe 'wt command' commands
+}
+
+_wt() {
+  local context state line
+  typeset -A opt_args
+
+  _arguments -C \
+    '1: :_wt_commands' \
+    '*:: :->args'
+
+  case $state in
+    args)
+      case $line[1] in
+        new)
+          _arguments \
+            '(-c --claude)'{-c,--claude}'[launch Claude after creation]' \
+            '(-y --auto)'{-y,--auto}'[skip all permission prompts]' \
+            '(-p --prompt)'{-p,--prompt}'[initial prompt text]:prompt' \
+            '(-f --prompt-file)'{-f,--prompt-file}'[read prompt from file]:file:_files' \
+            '--tab[open Claude in a new Ghostty tab]' \
+            '--split[open Claude in a Ghostty split-right]' \
+            '--split-down[open Claude in a Ghostty split-down]' \
+            '--window[open Claude in a new Ghostty window]' \
+            '1:worktree name' \
+            '2:base branch:_wt_branches'
+          ;;
+        agent|open)
+          _arguments \
+            '(-y --auto)'{-y,--auto}'[skip all permission prompts]' \
+            '(-f --prompt-file)'{-f,--prompt-file}'[read prompt from file]:file:_files' \
+            '--tab[open in a new Ghostty tab]' \
+            '--split[open in a Ghostty split-right]' \
+            '--split-down[open in a Ghostty split-down]' \
+            '--window[open in a new Ghostty window]' \
+            '1:worktree name:_wt_worktrees' \
+            '*:prompt text'
+          ;;
+        rm|remove)
+          _arguments \
+            '(-k --keep-branch)'{-k,--keep-branch}'[keep branch after removing worktree]' \
+            '1:worktree name:_wt_worktrees'
+          ;;
+        pr)
+          _arguments \
+            '(-d --draft)'{-d,--draft}'[open as draft PR]' \
+            '(-t --title)'{-t,--title}'[PR title]:title' \
+            '1:worktree name:_wt_worktrees'
+          ;;
+        switch|sw|sync|path)
+          _arguments \
+            '1:worktree name:_wt_worktrees'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_wt "$@"
