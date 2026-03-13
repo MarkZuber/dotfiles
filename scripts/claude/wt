@@ -77,7 +77,7 @@ EOF
       ok "opened Ghostty split-down for '$label'"
       ;;
     window|*)
-      open -na Ghostty.app --args -e "zsh -c $(printf '%q' "$shell_cmd; exec zsh")"
+      open -na Ghostty.app --args -e "zsh -c $(printf '%q' "$shell_cmd")"
       ok "opened Ghostty window for '$label'"
       ;;
   esac
@@ -113,22 +113,39 @@ default_base_branch() {
   git -C "$root" rev-parse --abbrev-ref HEAD
 }
 
-worktree_exists() {
-  git worktree list --porcelain | grep -q "worktree $(worktree_path "$1")$"
+# Look up a worktree's actual filesystem path by branch name.
+# Matches on the "branch refs/heads/<name>" line directly — no empty-line logic.
+find_worktree_path() {
+  git worktree list --porcelain | awk -v ref="refs/heads/$1" '
+    /^worktree / { path=$2 }
+    /^branch /   && $2 == ref { print path; exit }
+  '
+}
+
+# Resolve the actual path of an existing worktree by name (branch == name).
+# Falls back to the canonical new-style path so error messages remain useful.
+resolve_worktree_path() {
+  local found; found="$(find_worktree_path "$1")"
+  if [[ -n "$found" ]]; then
+    echo "$found"
+  else
+    worktree_path "$1"
+  fi
 }
 
 branch_for_worktree() {
-  local wt_path; wt_path="$(worktree_path "$1")"
-  git worktree list --porcelain | awk -v p="worktree $wt_path" '
-    /^worktree / { in_wt = ($0 == p) }
-    /^branch /  && in_wt { sub(/^branch refs\/heads\//, ""); print; exit }
+  # Branch name equals worktree name by convention; just verify via path lookup.
+  local wt_path; wt_path="$(resolve_worktree_path "$1")"
+  git worktree list --porcelain | awk -v wt="$wt_path" '
+    /^worktree / { cur=$2 }
+    /^branch /   && cur == wt { sub(/^branch refs\/heads\//, ""); print; exit }
   '
 }
 
 # ── subcommands ───────────────────────────────────────────────────────────────
 
 cmd_new() {
-  local name="" base="" launch_agent=0 agent_prompt="" agent_prompt_file="" mode=""
+  local name="" base="" launch_agent=0 agent_prompt="" agent_prompt_file="" mode="" auto=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -138,6 +155,7 @@ cmd_new() {
                           [[ -f "$1" ]] || die "prompt file not found: $1"
                           agent_prompt_file="$1"
                           shift ;;
+      --auto|-y)          auto=1; launch_agent=1; shift ;;
       --tab)              mode="tab"; launch_agent=1; shift ;;
       --split)            mode="split"; launch_agent=1; shift ;;
       --split-down)       mode="split-down"; launch_agent=1; shift ;;
@@ -177,6 +195,7 @@ cmd_new() {
     echo ""
     cmd_agent \
       ${mode:+"--$mode"} \
+      ${auto:+--auto} \
       ${agent_prompt_file:+"--prompt-file" "$agent_prompt_file"} \
       "$name" \
       ${agent_prompt:+"$agent_prompt"}
@@ -239,7 +258,7 @@ cmd_rm() {
 
   [[ -z "$name" ]] && die "usage: wt rm <name> [--keep-branch]"
 
-  local wt_path; wt_path="$(worktree_path "$name")"
+  local wt_path; wt_path="$(resolve_worktree_path "$name")"
   local root; root="$(git_root)"
   local branch; branch="$(branch_for_worktree "$name")"
 
@@ -273,7 +292,7 @@ cmd_pr() {
 
   [[ -z "$name" ]] && die "usage: wt pr <name> [--draft] [--title <title>]"
 
-  local wt_path; wt_path="$(worktree_path "$name")"
+  local wt_path; wt_path="$(resolve_worktree_path "$name")"
   [[ -d "$wt_path" ]] || die "worktree '$name' not found at $wt_path"
 
   local branch; branch="$(branch_for_worktree "$name")"
@@ -313,7 +332,7 @@ cmd_pr() {
 }
 
 cmd_agent() {
-  local name="" mode="${WT_GHOSTTY_MODE:-window}" prompt_file=""
+  local name="" mode="${WT_GHOSTTY_MODE:-tab}" prompt_file="" auto=0
   local prompt_parts=()
 
   while [[ $# -gt 0 ]]; do
@@ -322,6 +341,7 @@ cmd_agent() {
       --split)            mode="split"; shift ;;
       --split-down)       mode="split-down"; shift ;;
       --window)           mode="window"; shift ;;
+      --auto|-y)          auto=1; shift ;;
       --prompt-file|-f)   shift
                           [[ -f "$1" ]] || die "prompt file not found: $1"
                           prompt_file="$1"; shift ;;
@@ -330,9 +350,9 @@ cmd_agent() {
     esac
   done
 
-  [[ -z "$name" ]] && die "usage: wt agent [--tab|--split|--split-down|--window] [--prompt-file <file>] <name> [prompt...]"
+  [[ -z "$name" ]] && die "usage: wt agent [--tab|--split|--split-down|--window] [--auto] [--prompt-file <file>] <name> [prompt...]"
 
-  local wt_path; wt_path="$(worktree_path "$name")"
+  local wt_path; wt_path="$(resolve_worktree_path "$name")"
   [[ -d "$wt_path" ]] || die "worktree '$name' not found at $wt_path"
 
   local prompt="${prompt_parts[*]:-}"
@@ -340,17 +360,23 @@ cmd_agent() {
   info "launching Claude in worktree '$(bold "$name")' (branch: $branch)"
 
   # Build the shell command (no cd needed — ghostty_open sets working dir).
-  # For prompt files, use $(cat '/abs/path') so the shell in the new pane
-  # reads the file at runtime — avoids newline escaping issues entirely.
+  # Pass the prompt as a positional arg to start Claude interactively with the
+  # task pre-submitted (streaming, visible progress). --print is non-interactive
+  # and buffers the full response before showing anything — wrong for agent work.
+  # For prompt files, use $(cat '/abs/path') so the shell in the new pane reads
+  # the file at runtime, avoiding newline escaping issues entirely.
+  local claude_flags=""
+  [[ $auto -eq 1 ]] && claude_flags="--dangerously-skip-permissions"
+
   local shell_cmd
   if [[ -n "$prompt_file" ]]; then
     local abs_prompt_file
     abs_prompt_file="$(cd "$(dirname "$prompt_file")" && pwd)/$(basename "$prompt_file")"
-    shell_cmd="claude --print \"\$(cat $(printf '%q' "$abs_prompt_file"))\" && claude"
+    shell_cmd="claude $claude_flags \"\$(cat $(printf '%q' "$abs_prompt_file"))\""
   elif [[ -n "$prompt" ]]; then
-    shell_cmd="claude --print $(printf '%q' "$prompt") && claude"
+    shell_cmd="claude $claude_flags $(printf '%q' "$prompt")"
   else
-    shell_cmd="claude"
+    shell_cmd="claude $claude_flags"
   fi
 
   # ── tmux (always new window; ignores --tab/--split since tmux has its own model) ──
@@ -388,7 +414,7 @@ cmd_sync() {
   local name="${1:-}"
   [[ -z "$name" ]] && die "usage: wt sync <name>"
 
-  local wt_path; wt_path="$(worktree_path "$name")"
+  local wt_path; wt_path="$(resolve_worktree_path "$name")"
   [[ -d "$wt_path" ]] || die "worktree '$name' not found"
 
   local base; base="$(git -C "$wt_path" config worktree.base 2>/dev/null || default_base_branch)"
@@ -405,7 +431,7 @@ cmd_sync() {
 cmd_path() {
   local name="${1:-}"
   [[ -z "$name" ]] && die "usage: wt path <name>"
-  local p; p="$(worktree_path "$name")"
+  local p; p="$(resolve_worktree_path "$name")"
   [[ -d "$p" ]] || die "worktree '$name' not found at $p"
   echo "$p"
 }
@@ -439,6 +465,7 @@ $(bold "wt") — git worktree manager with Claude Code agent support
 $(bold USAGE)
   wt new <name> [base]           Create worktree + branch from [base] (default: main)
        --claude, -c              Also launch Claude after creation
+       --auto, -y                Skip all permission prompts (--dangerously-skip-permissions)
        --prompt, -p <text>       Send initial prompt to Claude on launch
        --prompt-file, -f <file>  Read initial prompt from a markdown file
        --tab                     Open Claude in a new Ghostty tab
@@ -457,6 +484,7 @@ $(bold USAGE)
        --draft, -d               Mark PR as draft
        --title, -t <title>       Set PR title
   wt agent <name> [prompt...]    Launch Claude Code in the worktree
+       --auto, -y                Skip all permission prompts (--dangerously-skip-permissions)
        --prompt-file, -f <file>  Read initial prompt from a markdown file
        --tab                     New Ghostty tab
        --split                   Ghostty split-right
@@ -466,11 +494,11 @@ $(bold USAGE)
 
 $(bold ENVIRONMENT)
   WT_ROOT          Root directory for all worktrees (default: ~/wt)
-                   Worktrees are placed at $WT_ROOT/<repo>/<name>
+                   Worktrees are placed at \$WT_ROOT/<repo>/<name>
   WT_BASE          Override the full parent dir for this repo's worktrees
                    (overrides WT_ROOT; useful for one-off location changes)
   WT_GHOSTTY_MODE  Default open mode for Ghostty: window | tab | split | split-down
-                   (default: window; overridden per-call by --tab/--split/etc.)
+                   (default: tab; overridden per-call by --tab/--split/etc.)
 
 $(bold EXAMPLES)
   wt new feature/auth            Create worktree from main, branch = feature/auth
