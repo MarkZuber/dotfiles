@@ -98,7 +98,7 @@ worktrees_base() {
   if [[ -n "$override" ]]; then
     echo "$override"
   else
-    echo "$(dirname "$(git_root)")/$(repo_name)-wt"
+    echo "${WT_ROOT:-$HOME/wt}/$(repo_name)"
   fi
 }
 
@@ -128,7 +128,7 @@ branch_for_worktree() {
 # ── subcommands ───────────────────────────────────────────────────────────────
 
 cmd_new() {
-  local name="" base="" launch_agent=0 agent_prompt="" mode=""
+  local name="" base="" launch_agent=0 agent_prompt="" agent_prompt_file="" mode=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -136,7 +136,7 @@ cmd_new() {
       --prompt|-p)        shift; agent_prompt="$1"; shift ;;
       --prompt-file|-f)   shift
                           [[ -f "$1" ]] || die "prompt file not found: $1"
-                          agent_prompt="$(<"$1")"
+                          agent_prompt_file="$1"
                           shift ;;
       --tab)              mode="tab"; launch_agent=1; shift ;;
       --split)            mode="split"; launch_agent=1; shift ;;
@@ -175,7 +175,11 @@ cmd_new() {
 
   if [[ $launch_agent -eq 1 ]]; then
     echo ""
-    cmd_agent ${mode:+"--$mode"} "$name" ${agent_prompt:+"$agent_prompt"}
+    cmd_agent \
+      ${mode:+"--$mode"} \
+      ${agent_prompt_file:+"--prompt-file" "$agent_prompt_file"} \
+      "$name" \
+      ${agent_prompt:+"$agent_prompt"}
   fi
 }
 
@@ -331,18 +335,19 @@ cmd_agent() {
   local wt_path; wt_path="$(worktree_path "$name")"
   [[ -d "$wt_path" ]] || die "worktree '$name' not found at $wt_path"
 
-  local prompt
-  if [[ -n "$prompt_file" ]]; then
-    prompt="$(<"$prompt_file")"
-  else
-    prompt="${prompt_parts[*]:-}"
-  fi
+  local prompt="${prompt_parts[*]:-}"
   local branch; branch="$(branch_for_worktree "$name")"
   info "launching Claude in worktree '$(bold "$name")' (branch: $branch)"
 
-  # Build the shell command (no cd needed — ghostty_open sets working dir)
+  # Build the shell command (no cd needed — ghostty_open sets working dir).
+  # For prompt files, use $(cat '/abs/path') so the shell in the new pane
+  # reads the file at runtime — avoids newline escaping issues entirely.
   local shell_cmd
-  if [[ -n "$prompt" ]]; then
+  if [[ -n "$prompt_file" ]]; then
+    local abs_prompt_file
+    abs_prompt_file="$(cd "$(dirname "$prompt_file")" && pwd)/$(basename "$prompt_file")"
+    shell_cmd="claude --print \"\$(cat $(printf '%q' "$abs_prompt_file"))\" && claude"
+  elif [[ -n "$prompt" ]]; then
     shell_cmd="claude --print $(printf '%q' "$prompt") && claude"
   else
     shell_cmd="claude"
@@ -460,8 +465,10 @@ $(bold USAGE)
   wt open <name>                 Alias for wt agent
 
 $(bold ENVIRONMENT)
-  WT_BASE          Override the parent directory for worktrees
-                   (default: sibling dir  ../<repo>-wt/)
+  WT_ROOT          Root directory for all worktrees (default: ~/wt)
+                   Worktrees are placed at $WT_ROOT/<repo>/<name>
+  WT_BASE          Override the full parent dir for this repo's worktrees
+                   (overrides WT_ROOT; useful for one-off location changes)
   WT_GHOSTTY_MODE  Default open mode for Ghostty: window | tab | split | split-down
                    (default: window; overridden per-call by --tab/--split/etc.)
 

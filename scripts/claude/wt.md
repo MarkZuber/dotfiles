@@ -10,17 +10,19 @@ other or with your working tree.
 
 ## Worktree layout
 
-Worktrees are placed next to the main repo:
+Worktrees are placed under `~/wt/<repo>/`:
 
 ```
-~/code/
-  myrepo/          ← main repo (git root)
-  myrepo-wt/
+~/wt/
+  myrepo/
     feature-auth/  ← worktree for branch "feature-auth"
     fix-crash/     ← worktree for branch "fix-crash"
+~/code/
+  myrepo/          ← main repo (unchanged)
 ```
 
-Override the parent directory with `WT_BASE=/some/path`.
+Override the root with `WT_ROOT=/some/path` (worktrees go to `$WT_ROOT/<repo>/<name>`),
+or override the full parent for a specific repo with `WT_BASE=/some/path`.
 
 ## Commands
 
@@ -190,16 +192,15 @@ wt rm feature-auth
 
 ## Environment variables
 
-| Variable           | Default                         | Description                                              |
-|--------------------|---------------------------------|----------------------------------------------------------|
-| `WT_BASE`          | `../<repo-name>-wt/` (sibling) | Parent directory for all worktrees                       |
-| `WT_GHOSTTY_MODE`  | `window`                        | Default Ghostty open mode: `window` `tab` `split` `split-down` |
-
-Set `WT_GHOSTTY_MODE` in `~/.zshrc` to make tab or split your default:
+| Variable           | Default    | Description                                              |
+|--------------------|------------|----------------------------------------------------------|
+| `WT_ROOT`          | `~/wt`     | Root for all worktrees; repos get a subdir (`$WT_ROOT/<repo>/<name>`) |
+| `WT_BASE`          | —          | Override the full parent dir for this repo (overrides `WT_ROOT`) |
+| `WT_GHOSTTY_MODE`  | `window`   | Default Ghostty open mode: `window` `tab` `split` `split-down` |
 
 ```bash
+export WT_ROOT=~/worktrees       # use ~/worktrees/<repo>/<name> instead
 export WT_GHOSTTY_MODE=tab       # always open in a new tab
-export WT_GHOSTTY_MODE=split     # always split right
 ```
 
 Per-call flags (`--tab`, `--split`, etc.) always override `WT_GHOSTTY_MODE`.
