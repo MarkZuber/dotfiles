@@ -163,6 +163,8 @@ BREW_CASKS=(
     visual-studio-code
     git-credential-manager
     zoom
+    caffeine
+    scroll-reverser
 )
 
 for cask in "${BREW_CASKS[@]}"; do
