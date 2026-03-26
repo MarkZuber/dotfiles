@@ -131,6 +131,7 @@ BREW_PACKAGES=(
     lolcat
     fortune
     speedtest-cli
+    dockutil
 )
 
 for pkg in "${BREW_PACKAGES[@]}"; do
@@ -161,6 +162,7 @@ BREW_CASKS=(
     spotify
     visual-studio-code
     git-credential-manager
+    zoom
 )
 
 for cask in "${BREW_CASKS[@]}"; do
@@ -400,8 +402,38 @@ defaults write com.apple.dock orientation -string left
 defaults write com.apple.dock autohide -bool false
 defaults write com.apple.dock show-recents -bool false
 
-# Restart affected apps
+# Restart Finder for hidden files setting
 killall Finder 2>/dev/null || true
+
+# -----------------------------------------------------------------------------
+# Dock contents
+# -----------------------------------------------------------------------------
+
+echo ">>> Configuring Dock apps..."
+
+dockutil --remove all --no-restart 2>/dev/null || true
+
+DOCK_APPS=(
+    "/Applications/Google Chrome.app"
+    "/System/Applications/System Settings.app"
+    "/System/Applications/Notes.app"
+    "/System/Applications/Messages.app"
+    "/Applications/Signal.app"
+    "/Applications/Notion.app"
+    "/Applications/Discord.app"
+    "/System/Applications/Photos.app"
+    "/Applications/Visual Studio Code.app"
+    "/Applications/Ghostty.app"
+    "/Applications/Spotify.app"
+    "/System/Applications/Music.app"
+)
+
+for app in "${DOCK_APPS[@]}"; do
+    if [ -d "$app" ]; then
+        dockutil --add "$app" --no-restart 2>/dev/null || true
+    fi
+done
+
 killall Dock 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
