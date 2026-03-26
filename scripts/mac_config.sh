@@ -3,7 +3,6 @@
 # macOS Dev Setup Script
 # ======================
 # Sets up a development environment on macOS.
-# Mirrors the CachyOS setup: zsh/p10k/nvim/tmux/ghostty/etc.
 #
 # First:
 #   cd ~
