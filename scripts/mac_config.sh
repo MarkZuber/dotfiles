@@ -152,7 +152,6 @@ BREW_CASKS=(
     iterm2
     discord
     github
-    google-chrome
     logitech-g-hub
     notion
     raycast
@@ -401,7 +400,7 @@ defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
 # Dock: left side, no auto-hide, no recent apps
 defaults write com.apple.dock orientation -string left
 defaults write com.apple.dock autohide -bool false
-defaults write com.apple.dock show-recents -bool false
+# defaults write com.apple.dock show-recents -bool false
 
 # Restart Finder for hidden files setting
 killall Finder 2>/dev/null || true
@@ -412,7 +411,7 @@ killall Finder 2>/dev/null || true
 
 echo ">>> Configuring Dock apps..."
 
-dockutil --remove all --no-restart 2>/dev/null || true
+# dockutil --remove all --no-restart 2>/dev/null || true
 
 DOCK_APPS=(
     "/Applications/Google Chrome.app"
@@ -429,13 +428,13 @@ DOCK_APPS=(
     "/System/Applications/Music.app"
 )
 
-for app in "${DOCK_APPS[@]}"; do
-    if [ -d "$app" ]; then
-        dockutil --add "$app" --no-restart 2>/dev/null || true
-    fi
-done
+# for app in "${DOCK_APPS[@]}"; do
+#     if [ -d "$app" ]; then
+#         dockutil --add "$app" --no-restart 2>/dev/null || true
+#     fi
+# done
 
-killall Dock 2>/dev/null || true
+# killall Dock 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # Repos directory

@@ -14,5 +14,6 @@
     "editor.lightbulb.enabled": "on",
     "git.branchPrefix": "zube/",
     "diffEditor.ignoreTrimWhitespace": false,
-    "security.workspace.trust.untrustedFiles": "open"
+    "security.workspace.trust.untrustedFiles": "open",
+    "window.autoDetectColorScheme": true
 }
