@@ -129,8 +129,8 @@ BREW_PACKAGES=(
     cowsay
     lolcat
     fortune
-    speedtest-cli
     dockutil
+    tree-sitter-cli
 )
 
 for pkg in "${BREW_PACKAGES[@]}"; do
