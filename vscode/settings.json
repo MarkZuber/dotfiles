@@ -3,10 +3,9 @@
     "terminal.integrated.systemd.shouldUse": true,
     "terminal.integrated.defaultProfile.osx": "zsh",
     "terminal.integrated.defaultProfile.linux": "zsh",
-    "window.restoreWindows": "none",
     "workbench.startupEditor": "none",
     "workbench.iconTheme": "material-icon-theme",
-    "editor.fontFamily": "'ComicShannsMono Nerd Font', Menlo, Monaco, 'Courier New', monospace",
+    "editor.fontFamily": "'ComicShanns Nerd Font', Menlo, Monaco, 'Courier New', monospace",
     "editor.fontSize": 18,
     "editor.fontLigatures": true,
     "editor.insertSpaces": true,
@@ -15,5 +14,9 @@
     "git.branchPrefix": "zube/",
     "diffEditor.ignoreTrimWhitespace": false,
     "security.workspace.trust.untrustedFiles": "open",
-    "window.autoDetectColorScheme": true
+    "window.autoDetectColorScheme": true,
+    "workbench.editor.enablePreview": false,
+    "zenMode.restore": false,
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "claudeCode.preferredLocation": "sidebar"
 }

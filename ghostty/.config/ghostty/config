@@ -1,9 +1,9 @@
 
 # fonts
-font-family = ""
-font-family = JetBrains Mono
+# font-family = ""
+# font-family = JetBrains Mono
 # font-family = Komiki Mono Zero
-font-family = ComicShannsMono Nerd Font
+font-family = ComicShanns Nerd Font
 font-size = 18
 # font-codepoint-map = U+E000-U+F8FF=fontname:JetBrains Mono
 #  font-family = Symbols Nerd Font Mono

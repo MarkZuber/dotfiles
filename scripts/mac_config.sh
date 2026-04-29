@@ -131,6 +131,9 @@ BREW_PACKAGES=(
     fortune
     dockutil
     tree-sitter-cli
+    uv
+    awscli
+    glab
 )
 
 for pkg in "${BREW_PACKAGES[@]}"; do
@@ -168,6 +171,12 @@ BREW_CASKS=(
 for cask in "${BREW_CASKS[@]}"; do
     brew_cask_install "$cask"
 done
+
+# -----------------------------------------------------------------------------
+# Claude CLI
+# -----------------------------------------------------------------------------
+echo ">>> Installing claude..."
+curl -fsSL https://claude.ai/install.sh | bash
 
 # -----------------------------------------------------------------------------
 # nvm and Node.js
@@ -303,6 +312,10 @@ make_link "$DOTFILES_DIR/git/.gitconfig" ~/.gitconfig
 
 # ghostty config
 make_link "$DOTFILES_DIR/ghostty/.config/ghostty/config" ~/.config/ghostty/config
+
+# claude
+make_link "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
+make_link "$DOTFILES_DIR/claude/statusline-command.sh" ~/.claude/statusline-command.sh
 
 # VSCode settings (macOS path differs from Linux)
 echo ">>> Linking VSCode settings..."

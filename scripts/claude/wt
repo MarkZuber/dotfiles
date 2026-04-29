@@ -145,11 +145,12 @@ branch_for_worktree() {
 # ── subcommands ───────────────────────────────────────────────────────────────
 
 cmd_new() {
-  local name="" base="" launch_agent=0 agent_prompt="" agent_prompt_file="" mode="" auto=0
+  local name="" base="" launch_agent=0 agent_prompt="" agent_prompt_file="" mode="" auto=0 existing=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --claude|-c)        launch_agent=1; shift ;;
+      --existing|-e)      existing=1; shift ;;
       --prompt|-p)        shift; agent_prompt="$1"; shift ;;
       --prompt-file|-f)   shift
                           [[ -f "$1" ]] || die "prompt file not found: $1"
@@ -165,28 +166,52 @@ cmd_new() {
     esac
   done
 
-  [[ -z "$name" ]] && die "usage: wt new <name> [base-branch] [--claude] [--prompt <text>] [--prompt-file <file>]"
-  base="${base:-$(default_base_branch)}"
+  [[ -z "$name" ]] && die "usage: wt new <name> [base-branch] [--claude] [--existing] [--prompt <text>] [--prompt-file <file>]"
 
   local wt_path; wt_path="$(worktree_path "$name")"
   [[ -d "$wt_path" ]] && die "worktree '$name' already exists at $wt_path"
 
   local root; root="$(git_root)"
 
-  # Fetch latest so we branch from up-to-date origin
-  info "fetching origin/$base …"
-  git -C "$root" fetch origin "$base" --quiet 2>/dev/null || warn "fetch failed, using local $base"
+  if [[ $existing -eq 1 ]]; then
+    # Check out an existing branch — no new branch created
+    # Verify the branch exists locally or on origin
+    if ! git -C "$root" show-ref --verify --quiet "refs/heads/$name" 2>/dev/null; then
+      info "branch '$name' not found locally, fetching from origin …"
+      git -C "$root" fetch origin "$name" --quiet 2>/dev/null \
+        || die "branch '$name' not found locally or on origin"
+      git -C "$root" branch "$name" "origin/$name"
+    fi
 
-  info "creating branch '$name' from '$base' …"
-  git -C "$root" worktree add -b "$name" "$wt_path" "origin/$base" 2>/dev/null \
-    || git -C "$root" worktree add -b "$name" "$wt_path" "$base"
+    info "creating worktree for existing branch '$name' …"
+    git -C "$root" worktree add "$wt_path" "$name"
 
-  # Store the base branch so sync/pr can reference it
-  git -C "$wt_path" config worktree.base "$base"
+    # Infer base from tracking info or fall back to default
+    local upstream; upstream="$(git -C "$root" rev-parse --abbrev-ref "${name}@{upstream}" 2>/dev/null | sed 's|^origin/||' || echo "")"
+    base="${base:-${upstream:-$(default_base_branch)}}"
+    git -C "$wt_path" config worktree.base "$base"
 
-  ok "worktree ready at $(cyan "$wt_path")"
-  echo "   branch: $(bold "$name")"
-  echo "   base:   $base"
+    ok "worktree ready at $(cyan "$wt_path")"
+    echo "   branch: $(bold "$name")  $(dim "(existing)")"
+    echo "   base:   $base"
+  else
+    base="${base:-$(default_base_branch)}"
+
+    # Fetch latest so we branch from up-to-date origin
+    info "fetching origin/$base …"
+    git -C "$root" fetch origin "$base" --quiet 2>/dev/null || warn "fetch failed, using local $base"
+
+    info "creating branch '$name' from '$base' …"
+    git -C "$root" worktree add -b "$name" "$wt_path" "origin/$base" 2>/dev/null \
+      || git -C "$root" worktree add -b "$name" "$wt_path" "$base"
+
+    # Store the base branch so sync/pr can reference it
+    git -C "$wt_path" config worktree.base "$base"
+
+    ok "worktree ready at $(cyan "$wt_path")"
+    echo "   branch: $(bold "$name")"
+    echo "   base:   $base"
+  fi
   echo ""
   echo "   cd into it:  $(dim "cd \$(wt path $name)")"
   echo "   launch agent: $(dim "wt agent $name")"
@@ -304,28 +329,40 @@ cmd_pr() {
   info "pushing branch '$branch' to origin …"
   git -C "$wt_path" push -u origin "$branch"
 
-  if command -v gh &>/dev/null; then
+  local remote_url; remote_url="$(git -C "$wt_path" remote get-url origin 2>/dev/null || echo "")"
+
+  if command -v gh &>/dev/null && [[ "$remote_url" =~ github\.com ]]; then
     local gh_args=("pr" "create" "--base" "$base" "--head" "$branch")
     [[ $draft -eq 1 ]] && gh_args+=("--draft")
     [[ -n "$title" ]] && gh_args+=("--title" "$title") || gh_args+=("--fill")
     info "creating PR via gh …"
     gh -C "$wt_path" "${gh_args[@]}"
+
+  elif command -v glab &>/dev/null && [[ "$remote_url" =~ gitlab\. ]]; then
+    local glab_args=("mr" "create" "--target-branch" "$base" "--source-branch" "$branch" "--remove-source-branch")
+    [[ $draft -eq 1 ]] && glab_args+=("--draft")
+    [[ -n "$title" ]] && glab_args+=("--title" "$title") || glab_args+=("--fill")
+    info "creating MR via glab …"
+    glab -C "$wt_path" "${glab_args[@]}"
+
   else
-    local remote_url; remote_url="$(git -C "$wt_path" remote get-url origin 2>/dev/null || echo "")"
     local compare_url=""
-    if [[ "$remote_url" =~ github.com[:/](.+/.+)(\.git)?$ ]]; then
+    if [[ "$remote_url" =~ github\.com[:/](.+/.+)(\.git)?$ ]]; then
       local repo_slug="${BASH_REMATCH[1]%.git}"
       compare_url="https://github.com/$repo_slug/compare/$base...$branch?expand=1"
       [[ $draft -eq 1 ]] && compare_url+="&draft=1"
+    elif [[ "$remote_url" =~ (https?://[^/]*gitlab[^/]*)/(.+/.+?)(\.git)?$ ]]; then
+      local gl_host="${BASH_REMATCH[1]}"
+      local repo_slug="${BASH_REMATCH[2]}"
+      compare_url="$gl_host/$repo_slug/-/merge_requests/new?merge_request[source_branch]=$branch&merge_request[target_branch]=$base"
     fi
 
-    ok "branch pushed. Create PR at:"
+    ok "branch pushed. Create PR/MR at:"
     if [[ -n "$compare_url" ]]; then
       echo "   $(cyan "$compare_url")"
-      # Try to open in browser
       command -v open &>/dev/null && open "$compare_url"
     else
-      echo "   push complete; open your git host to create the PR"
+      echo "   push complete; open your git host to create the PR/MR"
       echo "   branch: $branch  →  base: $base"
     fi
   fi
@@ -464,6 +501,7 @@ $(bold "wt") — git worktree manager with Claude Code agent support
 
 $(bold USAGE)
   wt new <name> [base]           Create worktree + branch from [base] (default: main)
+       --existing, -e            Use an existing branch instead of creating a new one
        --claude, -c              Also launch Claude after creation
        --auto, -y                Skip all permission prompts (--dangerously-skip-permissions)
        --prompt, -p <text>       Send initial prompt to Claude on launch
@@ -503,6 +541,7 @@ $(bold ENVIRONMENT)
 $(bold EXAMPLES)
   wt new feature/auth            Create worktree from main, branch = feature/auth
   wt new fix-crash develop       Create from develop branch
+  wt new feature/auth --existing Attach worktree to an existing branch
   wt new ui-redesign --claude    Create + immediately launch Claude
   wt agent ui-redesign "Refactor the login form to use shadcn"
   wt pr ui-redesign --draft
@@ -510,8 +549,9 @@ $(bold EXAMPLES)
   wt sync feature/auth
   wt rm feature/auth
 
-$(bold "PR NOTES")
-  Requires $(bold gh) (GitHub CLI) for full PR creation. If gh is absent,
+$(bold "PR / MR NOTES")
+  Uses $(bold gh) (GitHub CLI) for GitHub repos, $(bold glab) (GitLab CLI) for GitLab repos.
+  Detection is automatic based on the remote URL. If neither CLI is available,
   wt will push the branch and open the compare URL in your browser.
 
 EOF

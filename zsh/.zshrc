@@ -10,7 +10,7 @@ fi
 
 # Add ~/.local/bin for distrobox-exported binaries (lsd, ghostty, etc.)
 # Add ~/.cargo/bin for cargo-installed tools (lsd via cargo)
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/dotfiles/scripts/claude:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -406,6 +406,7 @@ alias gcma="git checkout main"
 alias gcmas="git checkout master"
 alias gpfix="git a; git com 'fix'; git push"
 alias gdc="git diff --cached"
+alias gmom="git fetch; git merge origin/main"
 
 alias rg="rg --hidden --glob '!.git'"
 
@@ -430,6 +431,11 @@ else
   alias ci="code-insiders"
 fi
 
+# The following lines have been added by Docker Desktop to enable Docker CLI completions.
+fpath=(~/.docker/completions $fpath)
+autoload -Uz compinit
+compinit 
+# End of Docker CLI completions
 
 OS=$(uname)
 case "$OS" in
@@ -444,6 +450,9 @@ case "$OS" in
         ;;
 esac
 
+alias gdm='git diff main...$(git rev-parse --abbrev-ref HEAD)'
+
 # source local file that won't get checked in to my dotfiles
 [[ ! -f ~/.zshrc_local.zsh ]] || source ~/.zshrc_local.zsh
+[[ ! -f ~/.zshrc_work.zsh ]] || source ~/.zshrc_work.zsh
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
