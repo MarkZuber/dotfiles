@@ -1,0 +1,98 @@
+{
+    "$help": "https://aka.ms/terminal-documentation",
+    "$schema": "https://aka.ms/terminal-profiles-schema",
+
+    "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+
+    "copyOnSelect": true,
+    "copyFormatting": "none",
+    "trimBlockSelection": true,
+
+    "profiles": {
+        "defaults": {
+            "font": {
+                "face": "ComicShanns Nerd Font",
+                "size": 18,
+                "ligatures": true
+            },
+            "colorScheme": "ZubeDark",
+            "opacity": 100,
+            "useAcrylic": false,
+            "backgroundImageOpacity": 1.0,
+            "padding": "8",
+            "scrollbarState": "hidden",
+            "cursorShape": "bar",
+            "cursorHeight": 25,
+            "antialiasingMode": "cleartype",
+            "closeOnExit": "graceful"
+        },
+        "list": [
+            {
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "hidden": false,
+                "name": "PowerShell",
+                "source": "Windows.Terminal.PowershellCore",
+                "startingDirectory": "%USERPROFILE%",
+                "icon": "ms-appx:///ProfileIcons/{574e775e-4f2a-5b96-ac1e-a2962a402336}.scale-100.png"
+            },
+            {
+                "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+                "hidden": false,
+                "name": "Windows PowerShell",
+                "commandline": "powershell.exe",
+                "startingDirectory": "%USERPROFILE%"
+            },
+            {
+                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                "hidden": false,
+                "name": "Command Prompt",
+                "commandline": "cmd.exe",
+                "startingDirectory": "%USERPROFILE%"
+            }
+        ]
+    },
+
+    "schemes": [
+        {
+            "name": "ZubeDark",
+            "background": "#000022",
+            "foreground": "#C8C8C8",
+            "cursorColor": "#C8C8C8",
+            "selectionBackground": "#214283",
+            "black":         "#1E1E2E",
+            "blue":          "#2979FF",
+            "cyan":          "#00B4D8",
+            "green":         "#69D362",
+            "purple":        "#C792EA",
+            "red":           "#F44336",
+            "white":         "#C8C8C8",
+            "yellow":        "#FFB300",
+            "brightBlack":   "#666677",
+            "brightBlue":    "#82AAFF",
+            "brightCyan":    "#89DDFF",
+            "brightGreen":   "#C3E88D",
+            "brightPurple":  "#D482FF",
+            "brightRed":     "#FF5370",
+            "brightWhite":   "#FFFFFF",
+            "brightYellow":  "#FFCB6B"
+        }
+    ],
+
+    "keybindings": [
+        { "command": { "action": "splitPane", "split": "horizontal" }, "keys": "alt+shift+-" },
+        { "command": { "action": "splitPane", "split": "vertical" },   "keys": "alt+shift+=" },
+        { "command": { "action": "moveFocus", "direction": "left" },   "keys": "ctrl+shift+left" },
+        { "command": { "action": "moveFocus", "direction": "right" },  "keys": "ctrl+shift+right" },
+        { "command": { "action": "moveFocus", "direction": "up" },     "keys": "ctrl+shift+up" },
+        { "command": { "action": "moveFocus", "direction": "down" },   "keys": "ctrl+shift+down" },
+        { "command": { "action": "scrollUp" },                         "keys": "ctrl+shift+page_up" },
+        { "command": { "action": "scrollDown" },                       "keys": "ctrl+shift+page_down" },
+        { "command": "copy",                                            "keys": "ctrl+c" },
+        { "command": "paste",                                           "keys": "ctrl+v" },
+        { "command": "find",                                            "keys": "ctrl+shift+f" },
+        { "command": { "action": "newTab" },                           "keys": "ctrl+t" },
+        { "command": { "action": "closeTab" },                         "keys": "ctrl+w" },
+        { "command": { "action": "nextTab" },                          "keys": "ctrl+tab" },
+        { "command": { "action": "prevTab" },                          "keys": "ctrl+shift+tab" }
+    ]
+}

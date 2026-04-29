@@ -1,0 +1,18 @@
+# Windows-specific Ghostty config
+# Includes the shared base config then overrides shell-specific settings.
+# This file is symlinked to %APPDATA%\ghostty\config by windows_config.ps1.
+# The base config is loaded first; anything here takes precedence.
+
+include ~/dotfiles/ghostty/.config/ghostty/config
+
+# Shell overrides for Windows
+command = pwsh
+shell-integration = detect
+shell-integration-features = true
+
+# macOS-only keybinds from the base config are ignored on Windows,
+# but redefine split navigation with the same keys so they work in Ghostty for Windows.
+keybind = ctrl+shift+left=goto_split:left
+keybind = ctrl+shift+down=goto_split:bottom
+keybind = ctrl+shift+up=goto_split:top
+keybind = ctrl+shift+right=goto_split:right
