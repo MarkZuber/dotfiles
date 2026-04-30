@@ -451,6 +451,7 @@ case "$OS" in
 esac
 
 alias gdm='git diff main...$(git rev-parse --abbrev-ref HEAD)'
+rmc() { claude "resolve merge conflicts"; }
 
 # source local file that won't get checked in to my dotfiles
 [[ ! -f ~/.zshrc_local.zsh ]] || source ~/.zshrc_local.zsh

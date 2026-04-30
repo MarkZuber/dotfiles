@@ -232,14 +232,11 @@ $appPackages = @(
     @{ id = 'Ghostty.Ghostty';                         label = 'Ghostty' },
     @{ id = 'Microsoft.WindowsTerminal';               label = 'Windows Terminal' },
     @{ id = 'Microsoft.VisualStudioCode';              label = 'Visual Studio Code' },
-    @{ id = 'Google.Chrome';                           label = 'Google Chrome' },
     @{ id = 'Discord.Discord';                         label = 'Discord' },
     @{ id = 'GitHub.GitHubDesktop';                    label = 'GitHub Desktop' },
     @{ id = 'Notion.Notion';                           label = 'Notion' },
-    @{ id = 'Zoom.Zoom';                               label = 'Zoom' },
     @{ id = 'OpenWhisperSystems.Signal';               label = 'Signal' },
     @{ id = 'Spotify.Spotify';                         label = 'Spotify' },
-    @{ id = 'SlackTechnologies.Slack';                 label = 'Slack' },
     @{ id = 'Google.FlutterSDK';                       label = 'Flutter SDK' },
     @{ id = 'Docker.DockerDesktop';                    label = 'Docker Desktop' },
     @{ id = 'Microsoft.PowerToys';                     label = 'PowerToys' },
@@ -249,6 +246,27 @@ $appPackages = @(
 
 foreach ($pkg in $appPackages) {
     Winget-Install $pkg.id $pkg.label
+}
+
+# Chrome, Slack, and Zoom are commonly pre-installed via their own installers;
+# check the exe on disk so we don't re-install apps winget list might miss.
+foreach ($app in @(
+    @{ id = 'Google.Chrome';           label = 'Google Chrome'; paths = @(
+        "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+        "$env:LocalAppData\Google\Chrome\Application\chrome.exe" ) },
+    @{ id = 'SlackTechnologies.Slack'; label = 'Slack';         paths = @(
+        "$env:LocalAppData\slack\slack.exe" ) },
+    @{ id = 'Zoom.Zoom';              label = 'Zoom';           paths = @(
+        "$env:AppData\Zoom\bin\Zoom.exe",
+        "$env:ProgramFiles\Zoom\bin\Zoom.exe",
+        "${env:ProgramFiles(x86)}\Zoom\bin\Zoom.exe" ) }
+)) {
+    $found = $app.paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($found) {
+        Write-Step "$($app.label) already installed"
+    } else {
+        Winget-Install $app.id $app.label
+    }
 }
 
 # -----------------------------------------------------------------------------
