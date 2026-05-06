@@ -4,13 +4,15 @@
     Windows Dev Setup Script
 
 .DESCRIPTION
-    Sets up a development environment on Windows.
+    Configures a Windows machine to match the reference setup.
+    Assumes Git, Windows Terminal, and VSCode are already installed.
 
-    First:
-        cd ~
-        git clone https://github.com/markzuber/dotfiles
-    Then run (as Administrator):
-        ~\dotfiles\scripts\windows_config.ps1
+    Run as Administrator from a new terminal after cloning dotfiles:
+
+        git clone https://github.com/markzuber/dotfiles $HOME\dotfiles
+        pwsh -File $HOME\dotfiles\scripts\windows_config.ps1
+
+    Re-running is safe — all steps are idempotent.
 #>
 
 Set-StrictMode -Version Latest
@@ -22,7 +24,7 @@ Write-Host ""
 $DOTFILES_DIR = "$HOME\dotfiles"
 
 # -----------------------------------------------------------------------------
-# Helper functions
+# Helpers
 # -----------------------------------------------------------------------------
 
 function Write-Step($msg) {
@@ -55,22 +57,27 @@ function Winget-Install($id, $label) {
     }
 }
 
-function Scoop-Install($pkg) {
-    if (scoop list $pkg 2>$null | Select-String $pkg) {
-        Write-Step "$pkg (scoop) already installed"
+function Install-PsModule($name) {
+    if (Get-Module -ListAvailable -Name $name) {
+        Write-Step "PS module $name already installed"
     } else {
-        Write-Step "Installing $pkg (scoop)..."
-        scoop install $pkg
+        Write-Step "Installing PS module $name..."
+        Install-Module -Name $name -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck
     }
 }
 
-function Install-PsModule($name) {
-    if (Get-Module -ListAvailable -Name $name) {
-        Write-Step "PowerShell module $name already installed"
-    } else {
-        Write-Step "Installing PowerShell module $name..."
-        Install-Module -Name $name -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck
+function Install-FontFile($fontPath) {
+    $fontName = [System.IO.Path]::GetFileName($fontPath)
+    $dest = "C:\Windows\Fonts\$fontName"
+    if (Test-Path $dest) {
+        Write-Step "Font $fontName already installed"
+        return
     }
+    Write-Step "Installing font $fontName..."
+    Copy-Item $fontPath $dest -Force
+    $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    $regName = [System.IO.Path]::GetFileNameWithoutExtension($fontName) + " (TrueType)"
+    Set-ItemProperty -Path $regPath -Name $regName -Value $fontName -Force
 }
 
 # -----------------------------------------------------------------------------
@@ -81,8 +88,8 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
     [Security.Principal.WindowsBuiltInRole]::Administrator
 )
 if (-not $isAdmin) {
-    Write-Warning "This script must be run as Administrator for symlink creation and Windows feature installation."
-    Write-Warning "Please re-run from an elevated PowerShell prompt."
+    Write-Warning "This script must be run as Administrator (symlinks, font install, PowerToys config)."
+    Write-Warning "Right-click PowerShell → 'Run as administrator', then re-run."
     exit 1
 }
 
@@ -90,517 +97,156 @@ if (-not $isAdmin) {
 # Execution policy
 # -----------------------------------------------------------------------------
 
-Write-Step "Setting PowerShell execution policy..."
+Write-Step "Setting execution policy..."
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 # -----------------------------------------------------------------------------
-# Windows Features for Docker + Hyper-V
+# PowerShell 7
 # -----------------------------------------------------------------------------
 
-Write-Step "Enabling Windows features for Docker (Containers, Hyper-V, WSL2)..."
-
-$features = @(
-    'Microsoft-Hyper-V-All',
-    'Containers',
-    'Microsoft-Windows-Subsystem-Linux',
-    'VirtualMachinePlatform'
-)
-
-$rebootNeeded = $false
-foreach ($feature in $features) {
-    $state = Get-WindowsOptionalFeature -Online -FeatureName $feature -ErrorAction SilentlyContinue
-    if ($state -and $state.State -ne 'Enabled') {
-        Write-Step "Enabling Windows feature: $feature"
-        $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature -NoRestart -All
-        if ($result.RestartNeeded) { $rebootNeeded = $true }
-    } else {
-        Write-Step "Windows feature $feature already enabled"
-    }
-}
-
-if ($rebootNeeded) {
-    Write-Warning "Some Windows features require a reboot. Please reboot and re-run this script to continue."
-    Write-Warning "Press Enter to continue without rebooting (some installs may fail), or Ctrl+C to stop."
-    Read-Host
-}
+Winget-Install 'Microsoft.PowerShell' 'PowerShell 7'
 
 # -----------------------------------------------------------------------------
-# winget
+# Shell tools via winget
+# (small CLI utilities the profile depends on)
 # -----------------------------------------------------------------------------
 
-if (-not (Command-Exists 'winget')) {
-    Write-Step "Installing winget (App Installer)..."
-    # winget ships with Windows 11 and recent Windows 10. If missing, direct user to install it.
-    Write-Warning "winget not found. Install 'App Installer' from the Microsoft Store, then re-run."
-    exit 1
-} else {
-    Write-Step "winget already available: $(winget --version)"
-    Write-Step "Updating winget sources..."
-    winget source update --accept-source-agreements 2>$null
-}
+Winget-Install 'JanDeDobbeleer.OhMyPosh'  'Oh My Posh'
+Winget-Install 'junegunn.fzf'              'fzf'
+Winget-Install 'sharkdp.bat'               'bat'
+Winget-Install 'lsd-rs.lsd'                'lsd'
+Winget-Install 'BurntSushi.ripgrep.MSVC'   'ripgrep'
+Winget-Install 'ajeetdsouza.zoxide'        'zoxide'
 
-# -----------------------------------------------------------------------------
-# Scoop (secondary package manager for tools not in winget)
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing Scoop..."
-if (-not (Command-Exists 'scoop')) {
-    Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
-    # Add extras bucket
-    scoop bucket add extras
-    scoop bucket add nerd-fonts
-} else {
-    Write-Step "Scoop already installed"
-    scoop update
-}
-
-# -----------------------------------------------------------------------------
-# CLI tools via winget
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing CLI tools..."
-
-# Install PowerShell 7 first — it's the shell used everywhere (Ghostty, Windows Terminal,
-# profile symlinks). The built-in Windows PowerShell 5.1 is only used to run this script.
-Winget-Install 'Microsoft.PowerShell' 'PowerShell 7 (pwsh)'
-
-# Refresh PATH so pwsh.exe is available for the rest of this session
+# Refresh PATH so the tools above are available later in this session
 $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
             [System.Environment]::GetEnvironmentVariable('Path', 'User')
 
-$wingetPackages = @(
-    @{ id = 'Git.Git';                     label = 'git' },
-    @{ id = 'GitHub.GitLFS';               label = 'git-lfs' },
-    @{ id = 'dandavison.delta';            label = 'git-delta' },
-    @{ id = 'Neovim.Neovim';              label = 'neovim' },
-    @{ id = 'junegunn.fzf';               label = 'fzf' },
-    @{ id = 'BurntSushi.ripgrep.MSVC';    label = 'ripgrep' },
-    @{ id = 'sharkdp.bat';                label = 'bat' },
-    @{ id = 'lsd-rs.lsd';                 label = 'lsd' },
-    @{ id = 'eza-community.eza';          label = 'eza' },
-    @{ id = 'sharkdp.fd';                 label = 'fd' },
-    @{ id = 'Fastfetch-cli.Fastfetch';    label = 'fastfetch' },
-    @{ id = 'JernejSimoncic.Wget';        label = 'wget' },
-    @{ id = 'Kitware.CMake';              label = 'cmake' },
-    @{ id = 'OpenJS.NodeJS.LTS';          label = 'node' },
-    @{ id = 'Python.Python.3.13';         label = 'python 3.13' },
-    @{ id = 'JesseDuffield.lazygit';      label = 'lazygit' },
-    @{ id = 'GitHub.cli';                 label = 'gh' },
-    @{ id = 'jqlang.jq';                  label = 'jq' },
-    @{ id = 'ajeetdsouza.zoxide';         label = 'zoxide' },
-    @{ id = 'Rustlang.Rustup';            label = 'rustup/rust' },
-    @{ id = 'astral-sh.uv';              label = 'uv' },
-    @{ id = 'Amazon.AWSCLI';              label = 'aws cli' },
-    @{ id = 'glab.glab';                  label = 'glab' }
-)
+# -----------------------------------------------------------------------------
+# Fonts — ComicShannsMono Nerd Font
+# -----------------------------------------------------------------------------
 
-foreach ($pkg in $wingetPackages) {
-    Winget-Install $pkg.id $pkg.label
+Write-Step "Installing ComicShannsMono Nerd Font..."
+
+# Seed the regular weight from dotfiles
+$singleFont = "$DOTFILES_DIR\fonts\ComicShannsNerdFont-Regular.ttf"
+if (Test-Path $singleFont) {
+    Install-FontFile $singleFont
 }
 
-# Refresh PATH so new tools are available in this session
-$env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
-            [System.Environment]::GetEnvironmentVariable('Path', 'User')
-
-# tree-sitter-cli and television via npm/cargo (after node/rust are installed)
-Write-Step "Installing tree-sitter-cli via npm..."
-npm install -g tree-sitter-cli 2>$null
-
-Write-Step "Installing television (tv) via cargo..."
-if (-not (Command-Exists 'tv')) {
-    cargo install television 2>$null
+# Install the full family (Mono + Propo variants) via oh-my-posh
+if (Command-Exists 'oh-my-posh') {
+    oh-my-posh font install ComicShannsMono
 } else {
-    Write-Step "television already installed"
+    Write-Warning "oh-my-posh not in PATH yet. After setup, run: oh-my-posh font install ComicShannsMono"
 }
-
-# Fun terminal tools via Scoop
-Write-Step "Installing terminal fun tools via Scoop..."
-foreach ($pkg in @('figlet', 'cowsay', 'lolcat', 'fortune')) {
-    Scoop-Install $pkg
-}
-
-# luarocks via Scoop (for Neovim plugins)
-Scoop-Install 'luarocks'
-
-# -----------------------------------------------------------------------------
-# Apps via winget
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing apps..."
-
-$appPackages = @(
-    @{ id = 'Ghostty.Ghostty';                         label = 'Ghostty' },
-    @{ id = 'Microsoft.WindowsTerminal';               label = 'Windows Terminal' },
-    @{ id = 'Microsoft.VisualStudioCode';              label = 'Visual Studio Code' },
-    @{ id = 'Discord.Discord';                         label = 'Discord' },
-    @{ id = 'GitHub.GitHubDesktop';                    label = 'GitHub Desktop' },
-    @{ id = 'Notion.Notion';                           label = 'Notion' },
-    @{ id = 'OpenWhisperSystems.Signal';               label = 'Signal' },
-    @{ id = 'Spotify.Spotify';                         label = 'Spotify' },
-    @{ id = 'Google.FlutterSDK';                       label = 'Flutter SDK' },
-    @{ id = 'Docker.DockerDesktop';                    label = 'Docker Desktop' },
-    @{ id = 'Microsoft.PowerToys';                     label = 'PowerToys' },
-    @{ id = 'Microsoft.GitCredentialManager';          label = 'Git Credential Manager' },
-    @{ id = 'LogitechG.LGHUB';                         label = 'Logitech G Hub' }
-)
-
-foreach ($pkg in $appPackages) {
-    Winget-Install $pkg.id $pkg.label
-}
-
-# Chrome, Slack, and Zoom are commonly pre-installed via their own installers;
-# check the exe on disk so we don't re-install apps winget list might miss.
-foreach ($app in @(
-    @{ id = 'Google.Chrome';           label = 'Google Chrome'; paths = @(
-        "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
-        "$env:LocalAppData\Google\Chrome\Application\chrome.exe" ) },
-    @{ id = 'SlackTechnologies.Slack'; label = 'Slack';         paths = @(
-        "$env:LocalAppData\slack\slack.exe" ) },
-    @{ id = 'Zoom.Zoom';              label = 'Zoom';           paths = @(
-        "$env:AppData\Zoom\bin\Zoom.exe",
-        "$env:ProgramFiles\Zoom\bin\Zoom.exe",
-        "${env:ProgramFiles(x86)}\Zoom\bin\Zoom.exe" ) }
-)) {
-    $found = $app.paths | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if ($found) {
-        Write-Step "$($app.label) already installed"
-    } else {
-        Winget-Install $app.id $app.label
-    }
-}
-
-# -----------------------------------------------------------------------------
-# Visual Studio 2022 Community with C++ and base build tools
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing Visual Studio 2022 Community with C++ workload..."
-
-$vsInstalled = winget list --id 'Microsoft.VisualStudio.2022.Community' --exact 2>$null | Select-String 'VisualStudio'
-if ($vsInstalled) {
-    Write-Step "Visual Studio 2022 Community already installed"
-} else {
-    Write-Step "Installing Visual Studio 2022 Community (this will take a while)..."
-    winget install --id 'Microsoft.VisualStudio.2022.Community' --exact --silent `
-        --accept-package-agreements --accept-source-agreements `
-        --override ('--wait --quiet --norestart --includeRecommended ' +
-                    '--add Microsoft.VisualStudio.Workload.NativeDesktop ' +
-                    '--add Microsoft.VisualStudio.Workload.NativeCrossPlat ' +
-                    '--add Microsoft.VisualStudio.Workload.VCTools ' +
-                    '--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 ' +
-                    '--add Microsoft.VisualStudio.Component.Windows11SDK.22621')
-}
-
-# -----------------------------------------------------------------------------
-# Claude CLI
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing Claude CLI..."
-if (-not (Command-Exists 'claude')) {
-    $claudeInstall = (Invoke-RestMethod -Uri 'https://claude.ai/install.ps1' -ErrorAction SilentlyContinue)
-    if ($claudeInstall) {
-        Invoke-Expression $claudeInstall
-    } else {
-        # Fallback: install via npm
-        npm install -g @anthropic-ai/claude-code 2>$null
-    }
-} else {
-    Write-Step "Claude CLI already installed"
-}
-
-# -----------------------------------------------------------------------------
-# nvm-windows and Node.js
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing nvm-windows..."
-Winget-Install 'CoreyButler.NVMforWindows' 'nvm-windows'
-
-# Refresh PATH
-$env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
-            [System.Environment]::GetEnvironmentVariable('Path', 'User')
-
-if (Command-Exists 'nvm') {
-    Write-Step "Installing Node.js LTS via nvm..."
-    nvm install lts
-    nvm use lts
-}
-
-Write-Step "Installing global npm packages..."
-foreach ($pkg in @('typescript', 'ts-node', 'prettier', 'eslint')) {
-    $installed = npm list -g $pkg 2>$null | Select-String $pkg
-    if (-not $installed) {
-        npm install -g $pkg
-    } else {
-        Write-Step "npm package $pkg already installed"
-    }
-}
-
-# -----------------------------------------------------------------------------
-# Rust
-# -----------------------------------------------------------------------------
-
-Write-Step "Configuring Rust..."
-# Refresh PATH so rustup/cargo are visible
-$env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
-            [System.Environment]::GetEnvironmentVariable('Path', 'User')
-
-if (Command-Exists 'rustup') {
-    Write-Step "Rust already installed: $(rustc --version 2>$null)"
-    rustup update
-} else {
-    Write-Step "Run rustup-init.exe from the installed rustup to complete Rust setup."
-}
-
-# -----------------------------------------------------------------------------
-# Fonts (install to Windows Fonts directory)
-# -----------------------------------------------------------------------------
-
-Write-Step "Installing fonts..."
-$fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
-$systemFontsDir = "$env:SystemRoot\Fonts"
-$userFontsRegPath = 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-
-function Install-Font($zipPath, $label) {
-    if (-not (Test-Path $zipPath)) {
-        Write-Step "$label font zip not found, skipping"
-        return
-    }
-    Write-Step "Installing $label font..."
-    $tempDir = Join-Path $env:TEMP "fonts_$label"
-    Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
-    Get-ChildItem $tempDir -Recurse -Include '*.ttf', '*.otf' | ForEach-Object {
-        $dest = Join-Path $fontsDir $_.Name
-        Copy-Item $_.FullName $dest -Force
-        $fontName = $_.BaseName
-        if (-not (Get-ItemProperty $userFontsRegPath -Name "$fontName (TrueType)" -ErrorAction SilentlyContinue)) {
-            New-ItemProperty -Path $userFontsRegPath -Name "$fontName (TrueType)" -Value $dest -PropertyType String -Force | Out-Null
-        }
-    }
-    Remove-Item $tempDir -Recurse -Force
-}
-
-New-Item -ItemType Directory -Path $fontsDir -Force | Out-Null
-Install-Font "$DOTFILES_DIR\fonts\FiraCode.zip"         "FiraCode"
-Install-Font "$DOTFILES_DIR\fonts\CascadiaCode.zip"     "CascadiaCode"
-Install-Font "$DOTFILES_DIR\fonts\comic-shanns-mono-v1.3.0.zip" "ComicShanns"
-
-# Also install ComicShanns TTF if present
-$comicShannsttf = "$DOTFILES_DIR\fonts\ComicShannsNerdFont-Regular.ttf"
-if (Test-Path $comicShannsttf) {
-    $dest = Join-Path $fontsDir "ComicShannsNerdFont-Regular.ttf"
-    Copy-Item $comicShannsttf $dest -Force
-    New-ItemProperty -Path $userFontsRegPath -Name "ComicShanns Nerd Font Regular (TrueType)" -Value $dest -PropertyType String -Force | Out-Null
-}
-
-# Install Nerd Font via Scoop for reliable access
-Write-Step "Installing CascadiaCode Nerd Font via Scoop..."
-scoop install nerd-fonts/CascadiaCode 2>$null
 
 # -----------------------------------------------------------------------------
 # PowerShell modules
 # -----------------------------------------------------------------------------
 
 Write-Step "Installing PowerShell modules..."
-
-# Update PowerShellGet first
 Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber -ErrorAction SilentlyContinue
 
-$psModules = @(
-    'posh-git',
-    'Terminal-Icons',
-    'PSFzf',
-    'z',
-    'PSReadLine'
-)
-
-foreach ($mod in $psModules) {
+foreach ($mod in @('PSReadLine', 'posh-git', 'Terminal-Icons', 'PSFzf', 'z')) {
     Install-PsModule $mod
 }
 
-# oh-my-posh via winget (official distribution)
-Winget-Install 'JanDeDobbeleer.OhMyPosh' 'oh-my-posh'
-
 # -----------------------------------------------------------------------------
-# PowerShell profile
+# PowerShell profile symlinks (PS7 + PS5)
 # -----------------------------------------------------------------------------
 
 Write-Step "Linking PowerShell profile..."
 
-# PS7 profile location
-$ps7ProfileDir = "$HOME\Documents\PowerShell"
-$ps7ProfilePath = "$ps7ProfileDir\Microsoft.PowerShell_profile.ps1"
-
-# Windows PowerShell 5.1 profile
-$ps5ProfileDir = "$HOME\Documents\WindowsPowerShell"
-$ps5ProfilePath = "$ps5ProfileDir\Microsoft.PowerShell_profile.ps1"
-
-New-Item -ItemType Directory -Path $ps7ProfileDir -Force | Out-Null
-New-Item -ItemType Directory -Path $ps5ProfileDir -Force | Out-Null
-
-Make-Link "$DOTFILES_DIR\powershell\Microsoft.PowerShell_profile.ps1" $ps7ProfilePath
-Make-Link "$DOTFILES_DIR\powershell\Microsoft.PowerShell_profile.ps1" $ps5ProfilePath
+$ps7Dir = "$HOME\Documents\PowerShell"
+$ps5Dir = "$HOME\Documents\WindowsPowerShell"
+New-Item -ItemType Directory -Path $ps7Dir -Force | Out-Null
+New-Item -ItemType Directory -Path $ps5Dir -Force | Out-Null
+Make-Link "$DOTFILES_DIR\powershell\Microsoft.PowerShell_profile.ps1" "$ps7Dir\Microsoft.PowerShell_profile.ps1"
+Make-Link "$DOTFILES_DIR\powershell\Microsoft.PowerShell_profile.ps1" "$ps5Dir\Microsoft.PowerShell_profile.ps1"
 
 # -----------------------------------------------------------------------------
-# Symlink dotfiles
+# Dotfile symlinks
 # -----------------------------------------------------------------------------
 
 Write-Step "Linking dotfiles..."
 
-# git config
-Make-Link "$DOTFILES_DIR\git\.gitconfig" "$HOME\.gitconfig"
-
-# editorconfig
+Make-Link "$DOTFILES_DIR\git\.gitconfig"           "$HOME\.gitconfig"
 Make-Link "$DOTFILES_DIR\editorconfig\.editorconfig" "$HOME\.editorconfig"
-
-# nvim
-Make-Link "$DOTFILES_DIR\nvim\.config\nvim" "$env:LOCALAPPDATA\nvim"
-
-# ghostty config (Windows path: %APPDATA%\ghostty\config)
-# Use config_windows, which includes the shared base config and overrides shell settings for Windows.
+Make-Link "$DOTFILES_DIR\nvim\.config\nvim"        "$env:LOCALAPPDATA\nvim"
 Make-Link "$DOTFILES_DIR\ghostty\.config\ghostty\config_windows" "$env:APPDATA\ghostty\config"
-
-# claude settings
-Make-Link "$DOTFILES_DIR\claude\settings.json" "$HOME\.claude\settings.json"
+Make-Link "$DOTFILES_DIR\claude\settings.json"     "$HOME\.claude\settings.json"
 
 # VSCode settings
-$vscodeSettingsSrc = "$DOTFILES_DIR\vscode\settings.json"
-Make-Link $vscodeSettingsSrc "$env:APPDATA\Code\User\settings.json"
-Make-Link $vscodeSettingsSrc "$env:APPDATA\Code - Insiders\User\settings.json"
+$vsSrc = "$DOTFILES_DIR\vscode\settings.json"
+Make-Link $vsSrc "$env:APPDATA\Code\User\settings.json"
+Make-Link $vsSrc "$env:APPDATA\Code - Insiders\User\settings.json"
 
 # Windows Terminal settings
-$wtSettingsDir = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState"
-if (Test-Path $wtSettingsDir) {
-    Make-Link "$DOTFILES_DIR\windows-terminal\settings.json" "$wtSettingsDir\settings.json"
+$wtDir = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState"
+if (Test-Path $wtDir) {
+    Make-Link "$DOTFILES_DIR\windows-terminal\settings.json" "$wtDir\settings.json"
 } else {
-    Write-Step "Windows Terminal package dir not found; copy $DOTFILES_DIR\windows-terminal\settings.json manually if needed"
+    Write-Warning "Windows Terminal settings dir not found — open Windows Terminal once, then re-run this script."
 }
 
-# -----------------------------------------------------------------------------
-# Git configuration
-# -----------------------------------------------------------------------------
-
-Write-Step "Configuring git credentials (wincred)..."
-git config --file "$HOME\.gitconfig-local" credential.helper manager
 
 # -----------------------------------------------------------------------------
 # VSCode extensions
 # -----------------------------------------------------------------------------
 
 Write-Step "Installing VSCode extensions..."
-$vscodeExtensions = @(
-    'rust-lang.rust-analyzer',
-    'PKief.material-icon-theme',
-    'PKief.material-product-icons'
-)
-foreach ($ext in $vscodeExtensions) {
-    $installed = code --list-extensions 2>$null | Where-Object { $_ -eq $ext }
-    if (-not $installed) {
-        code --install-extension $ext 2>$null
+foreach ($ext in @('rust-lang.rust-analyzer', 'PKief.material-icon-theme', 'PKief.material-product-icons')) {
+    $already = code --list-extensions 2>$null | Where-Object { $_ -eq $ext }
+    if ($already) {
+        Write-Step "  $ext already installed"
     } else {
-        Write-Step "VSCode extension $ext already installed"
+        Write-Step "  Installing $ext..."
+        code --install-extension $ext 2>$null
     }
 }
 
 # -----------------------------------------------------------------------------
-# Docker: configure for Windows containers
-# -----------------------------------------------------------------------------
-
-Write-Step "Configuring Docker for Windows containers..."
-
-$dockerDaemonConfig = "$env:ProgramData\Docker\config\daemon.json"
-$dockerDaemonDir = Split-Path $dockerDaemonConfig -Parent
-
-if (-not (Test-Path $dockerDaemonDir)) {
-    New-Item -ItemType Directory -Path $dockerDaemonDir -Force | Out-Null
-}
-
-# Write daemon.json enabling both Linux and Windows container support
-# To switch to Windows containers: right-click Docker tray → Switch to Windows containers
-# Or run: & "C:\Program Files\Docker\Docker\DockerCli.exe" -SwitchWindowsEngine
-if (-not (Test-Path $dockerDaemonConfig)) {
-    @{
-        'experimental' = $true
-        'features'     = @{ 'buildkit' = $true }
-    } | ConvertTo-Json | Set-Content -Path $dockerDaemonConfig -Encoding UTF8
-    Write-Step "Docker daemon.json created with buildkit enabled"
-} else {
-    Write-Step "Docker daemon.json already exists"
-}
-
-Write-Step "NOTE: To build Windows containers, right-click the Docker tray icon and select 'Switch to Windows containers'"
-
-# -----------------------------------------------------------------------------
-# PowerToys: CapsLock → Ctrl via Keyboard Manager
+# PowerToys: CapsLock → Ctrl
 # -----------------------------------------------------------------------------
 
 Write-Step "Configuring PowerToys Keyboard Manager (CapsLock → Ctrl)..."
 
-$powerToysKbDir = "$env:LOCALAPPDATA\Microsoft\PowerToys\Keyboard Manager"
-$powerToysKbConfig = "$powerToysKbDir\default.json"
+$kbDir = "$env:LOCALAPPDATA\Microsoft\PowerToys\Keyboard Manager"
+New-Item -ItemType Directory -Path $kbDir -Force | Out-Null
 
-New-Item -ItemType Directory -Path $powerToysKbDir -Force | Out-Null
-
-# VK_CAPITAL = 0x14 (20), VK_LCONTROL = 0xA2 (162) / VK_CONTROL = 0x11 (17)
-# PowerToys Keyboard Manager JSON format (v0.70+)
-$kbConfig = @{
+# VK_CAPITAL = 20, VK_CONTROL = 17
+@{
     remapKeys = @{
-        inProcess = @(
-            @{
-                originalAttributes      = 0
-                originalVirtualKeyCode  = 20    # VK_CAPITAL (CapsLock)
-                newAttributes           = 0
-                newVirtualKeyCode       = 17    # VK_CONTROL (Ctrl)
-                targetApp               = ""
-            }
-        )
+        inProcess = @(@{
+            originalAttributes     = 0
+            originalVirtualKeyCode = 20
+            newAttributes          = 0
+            newVirtualKeyCode      = 17
+            targetApp              = ""
+        })
     }
-    remapShortcuts = @{
-        global      = @()
-        appSpecific = @()
-    }
-}
+    remapShortcuts = @{ global = @(); appSpecific = @() }
+} | ConvertTo-Json -Depth 10 | Set-Content -Path "$kbDir\default.json" -Encoding UTF8
 
-$kbConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $powerToysKbConfig -Encoding UTF8
-Write-Step "PowerToys Keyboard Manager configured: CapsLock → Ctrl"
-Write-Step "NOTE: PowerToys must be running for the remapping to take effect. Enable Keyboard Manager in PowerToys settings."
+Write-Step "CapsLock→Ctrl config written. Enable Keyboard Manager inside the PowerToys app."
 
 # -----------------------------------------------------------------------------
-# Repos directory
+# Misc
 # -----------------------------------------------------------------------------
 
-Write-Step "Setting up repos directory..."
 New-Item -ItemType Directory -Path "$HOME\repos" -Force | Out-Null
 
 # -----------------------------------------------------------------------------
-# Final notes
+# Done
 # -----------------------------------------------------------------------------
 
 Write-Host ""
-Write-Host "=== Setup Complete ===" -ForegroundColor Cyan
+Write-Host "=== Done! ===" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Installed tools:"
-Write-Host "  - CLI: git, neovim, fzf, ripgrep, bat, lsd, eza, lazygit, gh, zoxide"
-Write-Host "  - Languages: Node.js (LTS), Rust (via rustup), Python 3.13"
-Write-Host "  - PS modules: oh-my-posh, posh-git, PSReadLine, Terminal-Icons, PSFzf, z"
-Write-Host "  - Apps: Ghostty, Windows Terminal, VSCode, Chrome, Discord, GitHub Desktop,"
-Write-Host "          Notion, Zoom, Signal, Spotify, Slack, Flutter SDK,"
-Write-Host "          Docker Desktop, PowerToys"
-Write-Host "  - VS 2022 Community with C++ (NativeDesktop + VCTools workloads)"
+Write-Host "Next steps:" -ForegroundColor Yellow
+Write-Host "  1. Open a new terminal — PowerShell 7 should load with Oh My Posh." -ForegroundColor White
+Write-Host "  2. Open PowerToys → Keyboard Manager → enable it (CapsLock→Ctrl)." -ForegroundColor White
+Write-Host "  3. If the font picker appeared, select ComicShannsMono and confirm." -ForegroundColor White
+Write-Host "     Otherwise run: oh-my-posh font install ComicShannsMono" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Post-setup tasks:"
-Write-Host "  1. PowerShell 7 (pwsh.exe) is now installed — open a new pwsh window or Ghostty."
-Write-Host "     Windows PowerShell 5.1 (powershell.exe) is still the Windows default but is"
-Write-Host "     only used for legacy compatibility. Both share the same profile from dotfiles."
-Write-Host "  2. Run 'oh-my-posh font install' if fonts need additional setup"
-Write-Host "  3. CapsLock → Ctrl: ensure PowerToys is running and Keyboard Manager is enabled"
-Write-Host "     PowerToys → Keyboard Manager → Enable → verify the CapsLock mapping"
-Write-Host "  4. Docker Windows containers:"
-Write-Host "     Right-click Docker tray icon → Switch to Windows containers"
-Write-Host "  5. Flutter: run 'flutter doctor' to complete SDK setup"
-Write-Host "  6. VSCode font settings already linked from dotfiles"
-Write-Host "  7. Ghostty config linked (config_windows includes base config + Windows shell overrides)"
-Write-Host "  8. Git credentials use Windows Credential Manager (already configured)"
-Write-Host ""
-
-if (Command-Exists 'fastfetch') {
-    fastfetch
-}

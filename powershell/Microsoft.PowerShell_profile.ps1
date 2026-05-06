@@ -12,14 +12,24 @@ $DOTFILES_DIR = "$HOME\dotfiles"
 # -----------------------------------------------------------------------------
 
 if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
-    # Use powerlevel10k_rainbow theme — closest equivalent to the p10k setup on macOS.
-    # To list available themes: oh-my-posh config export --output ~/omp-themes
-    # To browse interactively:  Get-PoshThemes
-    $ompTheme = "$env:POSH_THEMES_PATH\powerlevel10k_rainbow.omp.json"
-    if (-not (Test-Path $ompTheme)) {
-        $ompTheme = "$env:POSH_THEMES_PATH\agnoster.omp.json"
+    # POSH_THEMES_PATH is not set by the MSIX/winget install — resolve it dynamically.
+    if (-not $env:POSH_THEMES_PATH) {
+        $ompPkg = Get-AppxPackage -Name 'ohmyposh.cli' -ErrorAction SilentlyContinue
+        if ($ompPkg) { $env:POSH_THEMES_PATH = Join-Path $ompPkg.InstallLocation 'themes' }
     }
-    oh-my-posh init pwsh --config $ompTheme | Invoke-Expression
+
+    # Use powerlevel10k_rainbow theme — closest equivalent to the p10k setup on macOS.
+    # To list available themes: Get-PoshThemes
+    $ompTheme = if ($env:POSH_THEMES_PATH) { Join-Path $env:POSH_THEMES_PATH 'powerlevel10k_rainbow.omp.json' }
+    if (-not $ompTheme -or -not (Test-Path $ompTheme)) {
+        $ompTheme = if ($env:POSH_THEMES_PATH) { Join-Path $env:POSH_THEMES_PATH 'agnoster.omp.json' }
+    }
+
+    if ($ompTheme -and (Test-Path $ompTheme)) {
+        oh-my-posh init pwsh --config $ompTheme | Invoke-Expression
+    } else {
+        oh-my-posh init pwsh | Invoke-Expression
+    }
 }
 
 # -----------------------------------------------------------------------------
@@ -46,13 +56,7 @@ if (Get-Module -ListAvailable -Name Terminal-Icons) {
 
 if (Get-Module -ListAvailable -Name PSReadLine) {
     Import-Module PSReadLine
-
-    # Prediction from both history and plugins (like zsh-autosuggestions)
-    Set-PSReadLineOption -PredictionSource HistoryAndPlugin -ErrorAction SilentlyContinue
-    Set-PSReadLineOption -PredictionSource History -ErrorAction SilentlyContinue
-
-    # Show inline suggestion (like zsh-autosuggestions grey text)
-    Set-PSReadLineOption -PredictionViewStyle InlineView -ErrorAction SilentlyContinue
+    $psrlVersion = (Get-Module PSReadLine).Version
 
     # Up/Down arrow = history prefix search (like zsh history-search-backward/forward)
     Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
@@ -61,26 +65,33 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
 
     # History settings (equivalent to HISTFILE / HISTSIZE / setopt EXTENDED_HISTORY)
     Set-PSReadLineOption -MaximumHistoryCount 10000
-    Set-PSReadLineOption -HistoryNoDuplicates          # equivalent to HIST_IGNORE_ALL_DUPS
+    Set-PSReadLineOption -HistoryNoDuplicates
     Set-PSReadLineOption -HistorySavePath "$HOME\.ps_history"
 
     # Syntax coloring (equivalent to zsh-syntax-highlighting)
-    Set-PSReadLineOption -Colors @{
-        Command            = 'Yellow'
-        Parameter          = 'Green'
-        String             = 'Cyan'
-        Operator           = 'Magenta'
-        Variable           = 'White'
-        Comment            = 'DarkGray'
-        Keyword            = 'Blue'
-        Error              = 'Red'
-        InlinePrediction   = 'DarkGray'
+    $psrlColors = @{
+        Command   = 'Yellow'
+        Parameter = 'Green'
+        String    = 'Cyan'
+        Operator  = 'Magenta'
+        Variable  = 'White'
+        Comment   = 'DarkGray'
+        Keyword   = 'Blue'
+        Error     = 'Red'
     }
 
-    # Ctrl+r = reverse history search via fzf (if PSFzf available)
-    # Ctrl+d to accept inline prediction
-    Set-PSReadLineKeyHandler -Chord 'Ctrl+d' -Function AcceptNextSuggestionWord
-    Set-PSReadLineKeyHandler -Chord 'Ctrl+e' -Function AcceptSuggestion
+    # PSReadLine 2.2+ features: inline prediction, autosuggestions, Ctrl+d/e handlers
+    if ($psrlVersion -ge [Version]'2.2') {
+        try {
+            Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+            Set-PSReadLineOption -PredictionViewStyle InlineView
+            $psrlColors['InlinePrediction'] = 'DarkGray'
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+d' -Function AcceptNextSuggestionWord
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+e' -Function AcceptSuggestion
+        } catch {}
+    }
+
+    Set-PSReadLineOption -Colors $psrlColors
 }
 
 # -----------------------------------------------------------------------------
@@ -88,7 +99,7 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
 # Equivalent to fzf-tab and fzf plugin in zsh
 # -----------------------------------------------------------------------------
 
-if (Get-Module -ListAvailable -Name PSFzf) {
+if ((Get-Module -ListAvailable -Name PSFzf) -and (Get-Command fzf -ErrorAction SilentlyContinue)) {
     Import-Module PSFzf
     Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t'
     Set-PsFzfOption -PSReadlineChordReverseHistory 'Ctrl+r'
@@ -156,9 +167,6 @@ function repos { Set-Location "$HOME\repos" }
 function cdh { Set-Location $HOME }
 function cdhome { Set-Location $HOME }
 
-# Clear
-Set-Alias cls Clear-Host
-
 # Code
 function c { code @args }
 function ci { code-insiders @args }
@@ -177,7 +185,8 @@ function gdm { git diff "main...$(git rev-parse --abbrev-ref HEAD)" }
 
 # ls / lsd aliases
 if (Get-Command lsd -ErrorAction SilentlyContinue) {
-    function ls { lsd @args }
+    Remove-Item Alias:ls -Force -ErrorAction SilentlyContinue
+    function ls { lsd -la @args }
     function ll { lsd -lhF --group-directories-first @args }
     function la { lsd -laFh @args }
     function l { lsd -lhF @args }
@@ -188,8 +197,16 @@ if (Get-Command lsd -ErrorAction SilentlyContinue) {
     function lsa { lsd -laFh @args }
     function llt { lsd -altr @args | Select-Object -Last 10 }
 } else {
-    function ll { Get-ChildItem -Force @args }
-    function la { Get-ChildItem -Force @args }
+    function ls   { Get-ChildItem @args }
+    function ll   { Get-ChildItem -Force @args | Sort-Object { -not $_.PSIsContainer }, Name | Format-Table Mode, LastWriteTime, Length, Name -AutoSize }
+    function la   { Get-ChildItem -Force @args | Format-Table Mode, LastWriteTime, Length, Name -AutoSize }
+    function l    { Get-ChildItem @args | Format-Table Mode, LastWriteTime, Length, Name -AutoSize }
+    function l1   { Get-ChildItem @args | Select-Object -ExpandProperty Name }
+    function lt   { Get-ChildItem -Recurse @args | Format-Table Mode, LastWriteTime, Length, FullName -AutoSize }
+    function l.   { Get-ChildItem -Force @args | Where-Object { $_.Name -like '.*' } | Format-Table -AutoSize }
+    function ldot { Get-ChildItem -Force @args | Where-Object { $_.Name -like '.*' } | Format-Table -AutoSize }
+    function lsa  { Get-ChildItem -Force @args | Format-Table Mode, LastWriteTime, Length, Name -AutoSize }
+    function llt  { Get-ChildItem -Force @args | Sort-Object LastWriteTime -Descending | Select-Object -Last 10 }
 }
 
 # cat → bat
@@ -234,7 +251,10 @@ function date_time { Get-Date -Format 'HH:mm:ss' }
 function sgrep { Select-String -Recurse -Context 5 @args }
 
 # Tree (Windows built-in, or use lsd --tree)
-function ltree { lsd --tree @args | less }
+function ltree {
+    if (Get-Command lsd -ErrorAction SilentlyContinue) { lsd --tree @args | less }
+    else { tree @args }
+}
 
 # -----------------------------------------------------------------------------
 # Docker: switch engine helpers
