@@ -127,7 +127,7 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 
 $env:EDITOR = 'nvim'
 $env:BAT_THEME = 'gruvbox-dark'
-$env:GCM_CREDENTIAL_STORE = 'wincred'
+$env:GCM_CREDENTIAL_STORE = 'wincredman'
 
 # Add cargo bin to PATH
 if (Test-Path "$HOME\.cargo\bin") {

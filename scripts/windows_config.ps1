@@ -232,6 +232,21 @@ New-Item -ItemType Directory -Path $kbDir -Force | Out-Null
 Write-Step "CapsLock→Ctrl config written. Enable Keyboard Manager inside the PowerToys app."
 
 # -----------------------------------------------------------------------------
+# Git Credential Manager
+# -----------------------------------------------------------------------------
+
+Write-Step "Configuring Git Credential Manager..."
+
+# GCM 2.7+ renamed 'wincred' → 'wincredman'. Remove any stale User-level env var.
+$staleVal = [System.Environment]::GetEnvironmentVariable('GCM_CREDENTIAL_STORE', 'User')
+if ($staleVal -eq 'wincred' -or $staleVal -eq '') {
+    Remove-ItemProperty -Path 'HKCU:\Environment' -Name 'GCM_CREDENTIAL_STORE' -ErrorAction SilentlyContinue
+}
+
+# Set the correct store via git config so it works before the profile is loaded.
+git config --global credential.credentialStore wincredman
+
+# -----------------------------------------------------------------------------
 # Misc
 # -----------------------------------------------------------------------------
 

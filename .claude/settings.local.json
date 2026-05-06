@@ -6,7 +6,11 @@
       "PowerShell(Get-Command *)",
       "PowerShell(winget install *)",
       "Bash(git config *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell($env:GCM_CREDENTIAL_STORE; [System.Environment]::GetEnvironmentVariable\\(\"GCM_CREDENTIAL_STORE\", \"User\"\\); [System.Environment]::GetEnvironmentVariable\\(\"GCM_CREDENTIAL_STORE\", \"Machine\"\\))",
+      "PowerShell(git-credential-manager *)",
+      "PowerShell([System.Environment]::GetEnvironmentVariable\\(\"GCM_CREDENTIAL_STORE\", \"Machine\"\\))"
     ]
   }
 }
