@@ -38,12 +38,27 @@ brew_cask_install() {
     local pkg="$1"
     if brew list --cask "$pkg" &>/dev/null 2>&1; then
         echo ">>> $pkg (cask) already installed"
-    else
-        echo ">>> Installing $pkg (cask)..."
-        # Fails when the app is already in /Applications from its own installer; keep going and
-        # list it at the end rather than stopping the whole setup.
-        brew install --cask "$pkg" || SKIPPED_CASKS+=("$pkg")
+        return
     fi
+
+    # An app already installed outside Homebrew (its own .dmg, the App Store) makes
+    # `brew install --cask` fail, so look for the cask's .app first and leave it alone.
+    # Casks that install a .pkg list no app here; their installer writes over an existing copy.
+    local app
+    while IFS= read -r app; do
+        if [ -n "$app" ] && { [ -d "/Applications/$app" ] || [ -d "$HOME/Applications/$app" ]; }; then
+            echo ">>> $pkg: $app is already installed outside Homebrew; skipping"
+            SKIPPED_CASKS+=("$pkg")
+            return
+        fi
+    done < <(brew info --cask --json=v2 "$pkg" 2>/dev/null | jq -r '
+        .casks[0].artifacts[] | select(type == "object" and has("app"))
+        | (.app[] | if type == "object" then .target else . end), (.target // empty)
+        | split("/") | last')
+
+    echo ">>> Installing $pkg (cask)..."
+    # Anything else that goes wrong: keep going and list it at the end.
+    brew install --cask "$pkg" || SKIPPED_CASKS+=("$pkg")
 }
 
 SKIPPED_CASKS=()
@@ -468,8 +483,9 @@ echo "Key bindings and commands: $DOTFILES_DIR/CHEATSHEET.md"
 echo ""
 
 if [ ${#SKIPPED_CASKS[@]} -gt 0 ]; then
-    echo "These casks failed to install, usually because the app was already installed outside"
-    echo "Homebrew. Delete the app and rerun, or leave it as is: ${SKIPPED_CASKS[*]}"
+    echo "These casks were not installed, usually because the app was already installed outside"
+    echo "Homebrew. Delete the app and rerun to have Homebrew manage it, or leave it as is:"
+    echo "  ${SKIPPED_CASKS[*]}"
     echo ""
 fi
 
