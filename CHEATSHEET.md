@@ -18,6 +18,7 @@ Ghostty (`macos-option-as-alt`), so every Alt binding below works on a Mac keybo
 | Key | Action |
 | --- | --- |
 | `Ctrl+Shift+←/→/↑/↓` | move between splits |
+| `Ctrl+Shift+Alt+←/→/↑/↓` | resize the split 10px in that direction |
 | `Shift+Cmd+`` ` `` | quick terminal (drops down from the top, from any app) |
 | `Cmd+Shift+PageUp/PageDown` | scroll a page |
 | `Shift+→` | extend a selection right |
