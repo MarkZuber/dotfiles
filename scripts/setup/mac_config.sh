@@ -40,9 +40,13 @@ brew_cask_install() {
         echo ">>> $pkg (cask) already installed"
     else
         echo ">>> Installing $pkg (cask)..."
-        brew install --cask "$pkg"
+        # Fails when the app is already in /Applications from its own installer; keep going and
+        # list it at the end rather than stopping the whole setup.
+        brew install --cask "$pkg" || SKIPPED_CASKS+=("$pkg")
     fi
 }
+
+SKIPPED_CASKS=()
 
 # -----------------------------------------------------------------------------
 # Xcode Command Line Tools
@@ -188,7 +192,12 @@ else
 fi
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 # rustaceanvim (nvim) expects rust-analyzer on PATH from the toolchain, not from Mason.
-rustup component add rust-analyzer clippy rustfmt
+if command_exists rustup; then
+    rustup component add rust-analyzer clippy rustfmt
+else
+    echo ">>> rustc is not from rustup ($(command -v rustc)); skipping rust-analyzer/clippy/rustfmt."
+    echo ">>> To switch: brew uninstall rust, then rerun this script."
+fi
 
 # -----------------------------------------------------------------------------
 # Git credentials (macOS Keychain)
@@ -457,6 +466,12 @@ echo "  6. Optional: 'atuin register' to sync shell history between machines"
 echo ""
 echo "Key bindings and commands: $DOTFILES_DIR/CHEATSHEET.md"
 echo ""
+
+if [ ${#SKIPPED_CASKS[@]} -gt 0 ]; then
+    echo "These casks failed to install, usually because the app was already installed outside"
+    echo "Homebrew. Delete the app and rerun, or leave it as is: ${SKIPPED_CASKS[*]}"
+    echo ""
+fi
 
 if command_exists fastfetch; then
     fastfetch
