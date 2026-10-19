@@ -9,22 +9,23 @@ command_timeout = 1000
 palette = "catppuccin_mocha"
 
 # Two-line frame like the old powerlevel10k prompt. Line 1: forge icon, path from ~, branch,
-# counted status, then (pushed right by $fill) exit status, duration, whatever language/tool
-# modules apply ($all), and the time. Line 2: the input.
+# counted status. Line 2: the input, with exit status, duration, whatever language/tool modules
+# apply ($all), and the time on the right (right_format, which zsh draws as RPROMPT).
+# The right side is not pushed to the edge of line 1 with $fill: a line exactly as wide as the
+# terminal gets wrapped by the terminal's reflow on resize, and zsh's redraw then leaves the
+# extra rows behind as stacked copies of the prompt. zsh places RPROMPT itself and hides it when
+# it no longer fits.
 # The time is the moment Enter was pressed, not when the prompt appeared: .zshrc redraws the
 # prompt on Enter, so scrollback shows when each command started.
 format = """
-[╭─ ](overlay1)${custom.git_host}$directory$git_branch$git_state$git_status\
-$fill \
-$status$cmd_duration$all$time[ ─╮](overlay1)
+[╭─ ](overlay1)${custom.git_host}$directory$git_branch$git_state$git_status
 [╰─](overlay1)$character"""
+
+right_format = "$status$cmd_duration$all$time"
 
 # The newline is written into format above; this module would add a second one via $all.
 [line_break]
 disabled = true
-
-[fill]
-symbol = " "
 
 [status]
 disabled = false
