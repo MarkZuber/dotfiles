@@ -1,0 +1,79 @@
+onboarding = false
+
+[ui]
+show_agent_labels_on_pane_borders = false
+
+# 5 wider than the default 26, so "!165 audio-node-compatibility" fits without ellipsis.
+sidebar_width = 31
+
+# Attention queue: agents that are blocked or finished sort to the top, rather than
+# being grouped by the space they happen to live in.
+agent_panel_sort = "priority"
+
+# Off on purpose: herdr's built-in agent-state toast can't carry an MR number (its text is
+# compiled in), so scripts/notify.sh raises the notification from the Claude Stop and
+# Notification hooks instead, titled "!165 · topic". [ui.sound] is a separate setting and
+# still chimes, so the audible half is unchanged.
+#
+# delay_seconds is inert while delivery is off; left set so flipping delivery back to
+# "system" restores the intended debounce.
+[ui.toast]
+delivery = "off"
+delay_seconds = 3
+
+# Several spaces can share a name; branch and dirty state tell them apart.
+[ui.sidebar.spaces]
+rows = [["state_icon", "workspace"], ["branch", "git_status"]]
+
+# Two rows per agent: state + MR + repo, then the topic on its own line so a long title
+# has the full width and never truncates the MR. No agent name row — they're all claude.
+#
+# $mr is pushed per-pane by scripts/mr-token.sh — per-pane rather than per-workspace
+# because one space often holds several agents on different branches.
+[ui.sidebar.agents.rows_by_agent]
+claude = [
+  # bold alone reads as secondary text; the explicit fg + dim = false is what makes it pop
+  # (catppuccin yellow, so it doesn't collide with the workspace colour).
+  ["state_icon", { token = "$mr", fg = "#f9e2af", bold = true, dim = false }, "workspace"],
+  ["terminal_title_stripped"],
+]
+
+[theme]
+name = "catppuccin"
+auto_switch = false
+
+[ui.sound]
+enabled = true
+
+[keys]
+# The built-in worktree action creates under a single global [worktrees] directory, which
+# cannot be made repo-relative. Unbound here in favour of the prefix+shift+g popup below,
+# which creates under <main-checkout>/.claude/worktrees/ like wt and EnterWorktree do.
+new_worktree = ""
+
+[[keys.command]]              # open in a split beside your work
+key = "prefix+f"
+type = "shell"
+command = "herdr plugin action invoke open-file-viewer --plugin herdr-file-viewer"
+
+[[keys.command]]              # …or in its own tab
+key = "prefix+shift+f"
+type = "shell"
+command = "herdr plugin action invoke open-file-viewer-tab --plugin herdr-file-viewer"
+
+[[keys.command]]              # new worktree under <main-checkout>/.claude/worktrees/
+key = "prefix+shift+g"
+type = "popup"
+command = "bash /Users/mark.zuber/.config/herdr/scripts/new-worktree.sh"
+width = "60%"
+height = "30%"
+
+[[keys.command]]
+key = "prefix+ctrl+g"
+type = "shell"
+command = "herdr plugin action invoke open-lazygit --plugin herdr-lazygit"
+
+[[keys.command]]
+key = "prefix+ctrl+shift+g"
+type = "shell"
+command = "herdr plugin action invoke open-lazygit-tab --plugin herdr-lazygit"

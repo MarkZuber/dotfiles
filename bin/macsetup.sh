@@ -16,7 +16,7 @@
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 brew install --cask rectangle
-brew install rustup-init tree-sitter neovim ripgrep fzf eza cowsay fortune figlet bat lazygit lolcat lsd stow
+brew install rustup-init tree-sitter neovim ripgrep fzf eza cowsay fortune figlet bat lazygit lolcat lsd
 brew install youtube-dl jq htop git-lfs pstree wget pkg-config git-credential-manager
 
 # Maybe just get nvm instead
@@ -48,10 +48,8 @@ defaults write com.googlecode.iterm2 PrefsCustomFolder -string "~/dotfiles/iterm
 defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
 
 
-pushd ~/dotfiles
-stow .
-# not sure if zsh will stow properly since installing zsh will put it there
-popd
+# Link the tracked config into place (see bin/link-dotfiles.sh for the file list).
+~/dotfiles/bin/link-dotfiles.sh
 
 # install .net
 brew install --cask dotnet

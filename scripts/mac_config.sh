@@ -121,7 +121,6 @@ BREW_PACKAGES=(
     htop
     zoxide
     television
-    stow
     mas
     tree
     pstree
