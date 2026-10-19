@@ -65,6 +65,35 @@ The macOS and CachyOS scripts skip anything already installed, so rerunning
 repeat and so on) and reruns the Claude Code installer. The older `bazzite_config.sh` has no
 such checks, so don't rerun it.
 
+### Before running it on a machine that's already set up
+
+On a machine that already has some of this config, or an older version of it, check these
+first:
+
+1. **Pull:** `cd ~/dotfiles && git pull`.
+2. **See what will be moved aside:** `scripts/link-dotfiles.sh --check`. Every `drift` line
+   is a file that the setup's `--replace` will move to `<file>.pre-dotfiles.<time>`. Before
+   running, note what those files hold that the repo doesn't. Real hosts in `~/.ssh/config`
+   belong in `~/.ssh/config.local`, extra git settings in `~/.gitconfig-local`, and
+   machine-specific shell setup in `~/.zshrc_local.zsh`.
+3. **Apps (macOS):** `brew list --cask` shows the apps Homebrew manages. An app in the
+   script's list that you installed some other way is skipped, not reinstalled, and listed at
+   the end of the run. To have Homebrew manage it, delete the app and rerun.
+4. **Rust:** `which rustc rustup`. If `rustc` exists but `rustup` doesn't (Homebrew's
+   `rust`), the setup skips rust-analyzer, clippy and rustfmt. Run `brew uninstall rust` first
+   to have it install rustup instead.
+5. **Neovim state from an older config:** to start LazyVim clean, move
+   `~/.local/share/nvim`, `~/.local/state/nvim` and `~/.cache/nvim` aside before opening nvim.
+6. **Stay at the keyboard:** the macOS script asks for your password (sudo) and asks whether
+   to enable Touch ID for sudo.
+
+Afterwards, find the moved-aside files and copy back anything you need:
+
+```sh
+find ~ -maxdepth 3 -path ~/Library -prune -o -name '*.pre-dotfiles.*' -print 2>/dev/null
+ls ~/Library/Application\ Support/Code*/User/ | grep pre-dotfiles
+```
+
 ## How config gets into place
 
 Every live config file is a symlink back into this repo, and **`scripts/link-dotfiles.sh` makes
@@ -174,6 +203,7 @@ machines that need them.
 | --- | --- | --- |
 | `~/.gitconfig-local` | `[include]` right after `[user]` in `git/.gitconfig` | work email, URL rewrites, credential helper |
 | `~/.claude/settings.work.json` | `scripts/link-dotfiles.sh`, or `windows_config.ps1` on Windows (merged into `~/.claude/settings.json`) | work-only Claude Code settings |
+| `~/.zshrc_local.zsh` | end of `zsh/.zshrc` | shell setup for this machine only |
 | `~/.zshrc_work.zsh` | end of `zsh/.zshrc` | work env vars and API keys |
 | `~/.zube-at-work` (empty marker) | `zsh/.zshrc` | makes `.zshrc` source `zsh/work_setup.zsh` (git-ignored) |
 | `$HOME\Documents\PowerShell\profile.work.ps1` | `powershell/Microsoft.PowerShell_profile.ps1` | work PowerShell setup |
