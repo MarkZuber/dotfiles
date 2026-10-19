@@ -1,0 +1,20 @@
+# atuin — https://docs.atuin.sh/configuration/config/
+# Local-only by default: nothing leaves the machine until you run `atuin register`/`atuin login`.
+# Import existing zsh history once with `atuin import zsh`.
+
+style = "compact"
+inline_height = 20
+show_preview = true
+
+# Enter runs the selected command; Tab puts it on the prompt to edit first.
+enter_accept = true
+
+# Ctrl+R searches everything (Ctrl+R again inside cycles the filter: global → host → session
+# → directory). ↑ isn't bound to atuin; .zshrc keeps zsh's own prefix search there.
+filter_mode = "global"
+search_mode = "fuzzy"
+
+# Never record commands that look like they carry secrets (AWS keys, GitHub/Slack tokens, ...).
+secrets_filter = true
+
+update_check = false

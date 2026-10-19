@@ -1,10 +1,3 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
 # Keep PATH free of duplicates. Marking `path` unique drops a repeat on sight and keeps the
 # leftmost copy, retroactively as well as from here on. Two entries arrive twice without it:
 # ~/.cargo/bin (~/.zshenv sources .cargo/env on an empty PATH, then the export below adds it
@@ -20,43 +13,36 @@ typeset -U path PATH
 
 # Add ~/.local/bin for distrobox-exported binaries (lsd, ghostty, etc.)
 # Add ~/.cargo/bin for cargo-installed tools (lsd via cargo)
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+# Add the repo's scripts/claude for `wt`, which the wt() wrapper below calls as `command wt`.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/dotfiles/scripts/claude:$PATH"
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-# Set name of the theme to load --- if set to "random", it will
-# load a random theme each time oh-my-zsh is loaded, in which case,
-# to know which specific one was loaded, run: echo $RANDOM_THEME
-# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="powerlevel10k/powerlevel10k"
+# No oh-my-zsh theme: the prompt is starship, initialised after oh-my-zsh below.
+ZSH_THEME=""
 
 # AUTOCOMPLETION
 # oh-my-zsh runs compinit itself (with a cached, host-scoped zcompdump) when
 # oh-my-zsh.sh is sourced below, so no manual compinit here — it was a redundant,
 # full-audit second run.
 
+# atuin (initialised at the bottom) is the real history search; this file is the fallback and
+# what atuin imports from.
 HISTFILE=~/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
+HISTSIZE=100000
+SAVEHIST=100000
 
 setopt CORRECT
 setopt EXTENDED_HISTORY                 # add timestamps to history
-setopt APPEND_HISTORY                   # adds history
-setopt SHARE_HISTORY
-setopt INC_APPEND_HISTORY SHARE_HISTORY # adds history incrementally and share it across sessions
+setopt SHARE_HISTORY                    # write incrementally and share across sessions
 setopt HIST_IGNORE_ALL_DUPS             # don't record dupes in history
 setopt HIST_REDUCE_BLANKS
 
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
-
-
-# autocompletion using arrow keys (based on history)
-bindkey '\e[A' history-search-backward
-bindkey '\e[B' history-search-forward
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'lsd -1 --color=always $realpath'
 
 # always update but never prompt for it
-export DISABLE_UPDATE_PROMPT=true
+zstyle ':omz:update' mode auto
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -118,18 +104,20 @@ export DISABLE_UPDATE_PROMPT=true
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions fzf-tab z)
+# Order matters: fzf-tab must load after compinit but before anything that wraps widgets
+# (autosuggestions), and zsh-syntax-highlighting has to be last.
+plugins=(git fzf fzf-tab zsh-autosuggestions zsh-syntax-highlighting)
 
 fpath+=${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src
 fpath+=$HOME/dotfiles/scripts/claude
 # Docker CLI completions — add to fpath BEFORE oh-my-zsh's compinit runs (below),
 # so they're picked up by that single compinit instead of a third redundant one.
 fpath=(~/.docker/completions $fpath)
-# TODO: this was the old way, make sure we're not breaking by removing
-# plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions z)
-# source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 source $ZSH/oh-my-zsh.sh
+
+# Alt+Enter runs the grey autosuggestion as-is. (Ctrl+E / → already accept it without running.)
+bindkey '^[^M' autosuggest-execute
 
 # User configuration
 
@@ -157,18 +145,17 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# setup nvm — lazy-loaded (node/npm come from Homebrew; nvm has no installed versions,
-# so eager-sourcing nvm.sh + nvm_auto was ~300ms of pure startup cost for nothing).
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-nvm() {
-  unset -f nvm
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-  nvm "$@"
-}
+# nvm, only where mise isn't installed (the Linux setup scripts still install nvm). Lazy-loaded:
+# sourcing nvm.sh eagerly cost ~300ms of startup.
+if (( ! $+commands[mise] )) && [[ -s "$HOME/.nvm/nvm.sh" ]]; then
+  export NVM_DIR="$HOME/.nvm"
+  nvm() {
+    unset -f nvm
+    \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    nvm "$@"
+  }
+fi
 
 alias vim="nvim"
 alias sv="sudo nvim"
@@ -177,7 +164,9 @@ alias sv="sudo nvim"
 export EDITOR='nvim'
 
 alias cls='clear'
-alias srcz="source ~/.zshrc"
+# Reload by replacing the shell: re-sourcing stacks hooks, keybindings and plugin state on top
+# of the old ones, while exec starts clean (keeping the environment, cwd and history).
+alias srcz="exec zsh"
 alias viz="vim ~/.zshrc"
 
 alias python="python3"
@@ -192,8 +181,6 @@ alias cd..='cd ..'
 alias cd...='cd ../..'
 alias cd....='cd ../../..'
 alias cd.....='cd ../../../..'
-
-. "$HOME/.cargo/env"
 
 alias c="code"
 alias ci="code-insiders"
@@ -212,7 +199,7 @@ alias rd="rmdir"
 alias d='dirs -v | head -10'
 
 # Print each PATH entry on a separate line
-alias path="echo -e ${PATH//:/\\n}"
+alias path='print -l $path'
 
 alias repos="cd ~/repos"
 
@@ -221,23 +208,26 @@ alias myip_dns="dig +short myip.opendns.com @resolver1.opendns.com"
 
 alias usage="du -h -d1"
 alias runp="lsof -i "
-alias topten="history | commands | sort -rn | head"
+# ten most-used commands
+alias topten="history 1 | awk '{print \$2}' | sort | uniq -c | sort -rn | head"
 alias listening="lsof -i -P | grep LISTEN "
 
 alias glog="git log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --branches"
 alias gpusho='git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)'
 
-alias flacconv="for f in *.flac; do ffmpeg -i "$f" -ab 320k -map_metadata 0 -id3v2_version 3 "${f%.flac}.mp3"; done"
+# convert every .flac in the current directory to a 320k mp3
+flacconv() {
+  local f
+  for f in *.flac; do
+    ffmpeg -i "$f" -ab 320k -map_metadata 0 -id3v2_version 3 "${f%.flac}.mp3"
+  done
+}
 
 # tree (with fallback)
-if which tree >/dev/null 2>&1; then
-  # displays a directory tree
+if (( $+commands[tree] )); then
   alias tree="tree -Csu"
-  # displays a directory tree - paginated
-  alias ltree="tree -Csu | less -R"
 else
   alias tree="find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'"
-  alias ltree="tree | less -R"
 fi
 
 # from 'brew install bat' a replacement for cat
@@ -265,8 +255,6 @@ alias grep="rg --color=auto -g '!**/.git/**/*' -g '!**/.fingerprint/**/*' -g '!u
 alias speedtest="wget -O /dev/null http://speedtest.wdc01.softlayer.com/downloads/test100.zip"
 # displays the ports that use the applications
 alias lsport='sudo lsof -i -T -n'
-# shows more about the ports on which the applications use
-alias llport='netstat -nape --inet --inet6'
 # show only active network listeners
 alias netlisteners='sudo lsof -i -P | grep LISTEN'
 
@@ -293,85 +281,35 @@ alias timer='echo "Timer started. Stop with Ctrl-D." && date && time cat && date
 # | List Directory Contents (ls)                                               |
 # ------------------------------------------------------------------------------
 
-# eza is the other option, but lsd is fantastic
-# 'brew install lsd'
+# lsd is the one ls replacement installed (eza is the alternative; exa, its predecessor, is
+# unmaintained). Its settings are in lsd/.config/lsd/config.yaml.
 
 alias ic="wezterm imgcat"
 
-alias ls="lsd "
-
-# I don't really like zoxide.  Maybe I need to learn it more, but I like what i have.
-# eval "$(zoxide init zsh)"
-# alias cd="z"
-
-# Passing an empty string env variable clears the constraint for the execution lifecyle
-# alias lsd="env LS_COLORS= lsd"
-# alias ll="env LS_COLORS= lsd -lF --header --group-directories-first $COLORFLAG"
-# alias la="env LS_COLORS= lsd -laF --header $COLORFLAG"
-
 # Core replacements
-alias ls="lsd -F $COLORFLAG" 
-alias ll="lsd -lF --group-directories-first $COLORFLAG"
-alias la="lsd -laF $COLORFLAG" # Removed 'h' to respect bytes layout
+alias ls="lsd -F"
+alias ll="lsd -lF --group-directories-first"
+alias la="lsd -laF" # Removed 'h' to respect bytes layout
 alias lsa="la"
 
 # Detailed long format view shortcuts
-alias l="lsd -lF $COLORFLAG"   # Removed 'h' to respect bytes layout
-alias l1="lsd -1 $COLORFLAG"
+alias l="lsd -lF"   # Removed 'h' to respect bytes layout
+alias l1="lsd -1"
 alias ldir="l -R"
 
 # Hidden file searches
-alias l.="lsd -dlF .* $COLORFLAG" # Removed 'h' to respect bytes layout
+alias l.="lsd -dlF .*" # Removed 'h' to respect bytes layout
 alias ldot="l."
 
 # Interactive Tree View
-alias ltree="lsd --tree" 
+alias ltree="lsd --tree"
 
-# File search helper tracking
-alias lf="find ./* -ctime -1 | xargs lsd -ltr $COLORFLAG" 
-
-# alias lt="lsd --tree"
-# # list all files colorized in long format
-# alias l="lsd -lhF $COLORFLAG"
-# # list all files with directories
-# alias ldir="l -R"
-# # Show hidden files
-# alias l.="lsd -dlhF .* $COLORFLAG"
-# alias ldot="l."
-# # use colors
-# alias ls="lsd -F $COLORFLAG"
-# # display only files & dir in a v-aling view
-# alias l1="lsd -1 $COLORFLAG"
-# # displays all files and directories in detail
-# alias la="lsd -laFh $COLORFLAG"
-# # displays all files and directories in detail (without "." and without "..")
-# # alias lA="exa -lAFh $COLORFLAG"
-# alias lsa="la"
-# # displays all files and directories in detail with newest-files at bottom
-# # alias lr="exa -laFhtr $COLORFLAG"
-# # show last 10 recently changed files
-# alias lt="lsd -altr | grep -v '^d' | tail -n 10"
-# # show files and directories (also in sub-dir) that was touched in the last hour
-# alias lf="find ./* -ctime -1 | xargs ls -ltr $COLORFLAG"
-# # displays files and directories in detail
-# alias ll="lsd -lFh --group-directories-first $COLORFLAG"
-# shows the most recently modified files at the bottom of
-# alias llr="exa -lartFh --group-directories-first $COLORFLAG"
-# list only directories
-# alias lsd="eza -lFh $COLORFLAG | grep --color=never '^d'"
-# sort by file-size
-# alias lS="exa -1FSshr $COLORFLAG"
-# displays files and directories
-# alias dir="exa --format=vertical $COLORFLAG"
-# displays more information about files and directories
-# alias vdir="exa --format=long $COLORFLAG"
+# Files changed in the last day, newest last
+alias lf="find ./* -ctime -1 | xargs lsd -ltr"
 
 # ------------------------------------------------------------------------------
 # | Hard- & Software Infos                                                     |
 # ------------------------------------------------------------------------------
-
-# pass options to free
-alias meminfo="free -m -l -t"
 
 # get top process eating memory
 alias psmem="ps -o time,ppid,pid,nice,pcpu,pmem,user,comm -A | sort -n -k 6"
@@ -380,7 +318,7 @@ alias psmem10="psmem | tail -10"
 
 # get top process eating cpu
 alias pscpu="ps -o time,ppid,pid,nice,pcpu,pmem,user,comm -A | sort -n -k 5"
-alias pscpu5="pscpu5 | tail -5"
+alias pscpu5="pscpu | tail -5"
 alias pscpu10="pscpu | tail -10"
 
 # shows the corresponding process to ...
@@ -392,11 +330,17 @@ alias pst="pstree -Alpha"
 # shows all your processes
 alias psmy="ps -ef | grep $USER"
 
-# the load-avg
-alias loadavg="cat /proc/loadavg"
-
-# show all partitions
-alias partitions="cat /proc/partitions"
+if [[ "$(uname)" == Linux ]]; then
+  alias meminfo="free -m -l -t"
+  alias loadavg="cat /proc/loadavg"
+  alias partitions="cat /proc/partitions"
+  # shows more about the ports on which the applications use
+  alias llport='netstat -nape --inet --inet6'
+else
+  alias meminfo="top -l 1 -s 0 | grep PhysMem"
+  alias loadavg="sysctl -n vm.loadavg"
+  alias partitions="diskutil list"
+fi
 
 # shows the disk usage of a directory legibly
 alias du='du -kh'
@@ -411,12 +355,12 @@ alias df='df -kTh'
 # | Other                                                                      |
 # ------------------------------------------------------------------------------
 
-# Put this in here for ghostty
-# See https://github.com/ghostty-org/ghostty/issues/3335
-export TERM=xterm-256color
+# TERM is left as Ghostty sets it (xterm-ghostty). Remote hosts that lack that terminfo are
+# handled by Ghostty's ssh-terminfo/ssh-env shell-integration features (see the ghostty config),
+# which is the fix for https://github.com/ghostty-org/ghostty/issues/3335.
 
 # decimal to hexadecimal value
-alias dec2hex='printf "%x\n" $1'
+dec2hex() { printf "%x\n" "$1"; }
 
 # Canonical hex dump; some systems have this symlinked
 command -v hd >/dev/null || alias hd="hexdump -C"
@@ -462,9 +406,6 @@ wt() {
 # source script from the same directory as this file
 if [[ -f ~/.zube-at-work ]]; then
     source ~/dotfiles/zsh/work_setup.zsh
-else
-  alias c="code"
-  alias ci="code-insiders"
 fi
 
 ### Ghostty Window Pane Tinting
@@ -568,7 +509,9 @@ clean_pane_tint_on_exit() {
     [[ ! -s "$state_file" ]] && rm -f "$state_file"
   fi
 }
-trap clean_pane_tint_on_exit EXIT INT TERM
+# zshexit runs once when the shell exits; a trap on INT also fired on every Ctrl-C at the prompt.
+autoload -Uz add-zsh-hook
+add-zsh-hook zshexit clean_pane_tint_on_exit
 
 # Run the smart assignment immediately when shell spawns
 # assign_curated_pane_tint
@@ -598,6 +541,63 @@ esac
 
 alias gdm='git diff main...$(git rev-parse --abbrev-ref HEAD)'
 rmc() { claude "resolve merge conflicts"; }
+
+alias http="xh"
+alias ghd="gh dash"
+alias mdv="glow -p"
+
+# ------------------------------------------------------------------------------
+# | Prompt, history, environments, navigation                                  |
+# ------------------------------------------------------------------------------
+# Each tool prints its own init script; running all six on every shell start cost ~220ms, so
+# each script is cached under ~/.cache/zsh-init and regenerated when that tool's binary is
+# newer (i.e. after an upgrade) or the init command below changes. A tool that isn't installed
+# (the Linux setups) is skipped.
+# To force a refresh after changing a tool's own config: rm -rf ~/.cache/zsh-init
+_cached_init() {
+  local tool=$1; shift
+  local bin=${commands[$tool]}
+  [[ -n $bin ]] || return 0
+  local cache=${XDG_CACHE_HOME:-$HOME/.cache}/zsh-init/$tool.zsh
+  local first=""
+  [[ -s $cache ]] && read -r first < $cache
+  if [[ $first != "# $*" || $bin -nt $cache ]]; then
+    mkdir -p ${cache:h}
+    { print -r -- "# $*"; "$@" } >| $cache
+  fi
+  source $cache
+}
+
+# mise: node/python/go versions (global defaults in ~/.config/mise/config.toml, per-project
+# in mise.toml or .tool-versions). Activated first so the tools below see its PATH.
+_cached_init mise mise activate zsh
+
+# direnv: loads/unloads a directory's .envrc on cd (`direnv allow` to trust one).
+_cached_init direnv direnv hook zsh
+
+# zoxide: `z <words>` jumps to the best match, `zi` picks with fzf. cd itself is untouched.
+_cached_init zoxide zoxide init zsh
+
+# television: context-aware Ctrl+T (cd → dirs, git checkout → branches, nvim → files).
+# Initialised before atuin so atuin's Ctrl+R binding wins.
+_cached_init tv tv init zsh
+
+# atuin: Ctrl+R searches a full, timestamped history database (sync is opt-in). ↑ is left out
+# of it on purpose: ↑/↓ step through earlier commands starting with what's already typed.
+_cached_init atuin atuin init zsh --disable-up-arrow
+bindkey '\e[A' history-search-backward
+bindkey '\e[B' history-search-forward
+
+_cached_init starship starship init zsh
+
+# Redraw the prompt as Enter is pressed, so the clock on each prompt left in scrollback says
+# when that command started rather than when the prompt first appeared.
+if (( $+commands[starship] )); then
+  autoload -Uz add-zle-hook-widget
+  _prompt_stamp_on_enter() { zle reset-prompt }
+  zle -N _prompt_stamp_on_enter
+  add-zle-hook-widget line-finish _prompt_stamp_on_enter
+fi
 
 # herdr pane/agent helpers: hls, hrun, hwatch, hjoin, hme (see the file for the full list).
 # Only useful inside herdr; harmless elsewhere, since every function just shells out.

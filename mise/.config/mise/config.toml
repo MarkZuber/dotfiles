@@ -1,0 +1,18 @@
+# mise — global tool versions. A project overrides these with its own mise.toml or
+# .tool-versions (`mise use node@22` writes one in the current directory).
+# Rust stays on rustup (its own toolchain manager); Python packaging stays on uv.
+
+[tools]
+node = "lts"
+python = "3.13"
+go = "latest"
+
+# Global CLIs that used to be `npm install -g`.
+"npm:typescript" = "latest"
+"npm:ts-node" = "latest"
+"npm:prettier" = "latest"
+"npm:eslint" = "latest"
+
+[settings]
+# Use uv to build Python virtualenvs when a project asks mise for one.
+python.uv_venv_auto = true

@@ -1,0 +1,20 @@
+# == Display Options ==
+layout: grid
+header: true
+
+# == Columns (Notice 'group' is removed) ==
+blocks:
+  - permission
+  - size
+  - user
+  - date
+  - name
+
+# == Formatting ==
+size: bytes
+date: '+%d %b %H:%M %Y'
+
+# == Theme Activation ==
+color:
+  when: auto
+  theme: custom

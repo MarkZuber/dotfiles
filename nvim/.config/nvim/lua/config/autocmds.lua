@@ -1,0 +1,3 @@
+-- Loaded on VeryLazy, on top of LazyVim's autocmds (yank highlight, restore cursor,
+-- close-with-q, checktime, resize splits are all already there):
+-- https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua

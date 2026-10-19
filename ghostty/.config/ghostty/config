@@ -32,7 +32,11 @@ confirm-close-surface = false
 
 # mouse
 # mouse-scroll-multiplier = 2
-# mouse-hide-while-typing = true
+mouse-hide-while-typing = true
+
+# Option sends Alt (ESC-prefixed) instead of typing special characters, so Alt mappings work:
+# <A-j>/<A-k> line moves in nvim, Alt+Enter to run a zsh autosuggestion, Alt+b/f word jumps.
+macos-option-as-alt = true
 
 # clipboard
 copy-on-select = clipboard
@@ -40,7 +44,9 @@ clipboard-trim-trailing-spaces = true
 
 #behavior
 quit-after-last-window-closed = true
-shell-integration-features = true
+# ssh-terminfo installs Ghostty's terminfo on hosts you ssh to (falling back to ssh-env, which
+# sends TERM=xterm-256color where it can't), so TERM can stay xterm-ghostty locally.
+shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo
 command = zsh
 
 # Navigation TMUX (or Ghostty splits)
@@ -57,7 +63,6 @@ window-save-state = always
 window-step-resize = false
 background-blur-radius = 15
 window-padding-balance = true
-confirm-close-surface = true
 shell-integration = zsh
 window-theme = dark
 custom-shader-animation = false
@@ -65,7 +70,7 @@ custom-shader-animation = false
 
 # https://github.com/hackr-sh/ghostty-shaders
 # note that you can do multiple shaders at the same time
-# scustom-shader = ghostty-shaders/galaxy.glsl
+# custom-shader = ghostty-shaders/galaxy.glsl
 # custom-shader = ghostty-shaders/underwater.glsl
 # custom-shader = ghostty-shaders/matrix-hallway.glsl
 # custom-shader = ghostty-shaders/cubes.glsl

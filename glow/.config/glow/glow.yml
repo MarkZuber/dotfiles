@@ -1,0 +1,6 @@
+# glow — terminal markdown renderer. `glow README.md`, `glow -p file.md` (pager), or bare
+# `glow` to browse markdown files under the current directory.
+style: "dark"
+pager: true
+width: 100
+mouse: false

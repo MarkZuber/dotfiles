@@ -1,5 +1,8 @@
-nvim/.config/nvim/lazy-lock.json
 .DS_Store
+# Per-checkout Claude Code permissions for working on this repo.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/out/
 mscript/
 prompts/
 

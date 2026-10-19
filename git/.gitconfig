@@ -25,13 +25,11 @@ s = status
 pr = pull --rebase
 rc = rebase --continue
 ra = rebase --abort
-lg = log --graph --pretty=format:'%%Cred%%h%%Creset %%C(yellow)%%d%%Creset %%s %%Cgreen(%%cr) %%C(bold blue)<%%an>%%Creset' --abbrev-commit --date=relative
-lga = log --graph --pretty=format:'%%Cred%%h%%Creset %%C(yellow)%%d%%Creset %%s %%Cgreen(%%cr) %%C(bold blue)<%%an>%%Creset' --abbrev-commit --date=relative --all
+lg = log --graph --pretty=format:'%Cred%h%Creset %C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+lga = log --graph --pretty=format:'%Cred%h%Creset %C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --all
 logrel=!git log --date=iso --pretty=format:'%C(auto) %ad%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08 %d %s' HEAD...$1^
 ll = log --pretty=oneline --abbrev-commit --max-count=15
 lc = log --stat --summary
-tpr = tf pull --rebase --deep
-tcd = tf checkin --deep
 prune = fetch --prune
 aliases = config --get-regexp alias
 amend = commit --amend
@@ -39,7 +37,7 @@ bl = blame -w -M -C
 bra = branch -rav
 branches = branch -rav
 filelog = log -u
-hist = log --graph --pretty=format:'%%Cred%%h%%Creset -%%C(yellow)%%d%%Creset %%s %%Cgreen(%%cr) %%C(bold blue) [%%an]%%Creset' --abbrev-commit --date=relative
+hist = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue) [%an]%Creset' --abbrev-commit --date=relative
 last = log -p --max-count=1 --word-diff
 lastref = rev-parse --short HEAD
 lasttag = describe --tags --abbrev=0
@@ -48,16 +46,17 @@ remotes = remote -v show
 stage = add
 statusSB = status -sb
 stats = diff --stat
-sync = !git fetch upstream -v && git fetch origin -v && git checkout master && git merge upstream/master
+# Default branch of origin (main, master, ...), as the sync/up/pub aliases below use it.
+# If it prints nothing, run `git remote set-head origin --auto` once in that repo.
+default-branch = !git symbolic-ref --short refs/remotes/origin/HEAD | sed 's@^origin/@@'
+sync = "!b=$(git default-branch) && git fetch upstream -v && git fetch origin -v && git checkout $b && git merge upstream/$b"
 undo = reset head~
 unstage = reset HEAD
 wdiff = diff --word-diff
 who = shortlog -s -e --
-up = !git fetch --all --prune && git rebase origin/master && git submodule update && git push . origin/master:master 2>/dev/null
-pub = !git push origin HEAD:master && git push . HEAD:master && git checkout master
+up = "!b=$(git default-branch) && git fetch --all --prune && git rebase origin/$b && git submodule update && git push . origin/$b:$b 2>/dev/null"
+pub = "!b=$(git default-branch) && git push origin HEAD:$b && git push . HEAD:$b && git checkout $b"
 cb = checkout -b
-tprs = tf pull --rebase --shallow
-tcds = tf checkin --shallow
 grog = log --graph --abbrev-commit --decorate --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(dim white) - %an%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n %C(white)%s%C(reset)'
 [color]
 branch = auto
@@ -84,7 +83,7 @@ name = Mark Zuber
 [pull]
 rebase = true
 [core]
-	editor = code --wait --new-window
+	editor = nvim
 	pager = delta
 
 [interactive]

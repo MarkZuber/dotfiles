@@ -18,6 +18,11 @@ org or host, or holds a secret. Those go in the local-only files listed under
 | `scripts/claude/`, `scripts/update_bazzite_wallpaper.sh` | standalone helpers |
 | everything else | the config itself, one folder per tool, laid out like `$HOME` (e.g. `zsh/.zshrc`, `herdr/.config/herdr/…`) |
 
+## Cheatsheet
+
+Key bindings and commands for everything here (Ghostty, herdr, zsh/atuin/television, zoxide,
+mise, git aliases, and Neovim by task and by language): **[CHEATSHEET.md](CHEATSHEET.md)**.
+
 ## Set up a new machine
 
 Clone to `~/dotfiles`. `.zshrc` and `.gitconfig` refer to files by that path.
@@ -65,8 +70,10 @@ such checks, so don't rerun it.
 Every live config file is a symlink back into this repo, and **`scripts/link-dotfiles.sh` makes
 all of them** on macOS and Linux. The list is the `MAP` array at the top of the script:
 
-- **Every machine:** `.zshrc`, `.p10k.zsh`, `.tmux.conf`, `.editorconfig`, `.gitconfig`, nvim,
-  ghostty, Claude Code (`~/.claude/…`), herdr (`~/.config/herdr/…`) and `~/.agents/…`.
+- **Every machine:** `.zshrc`, `.tmux.conf`, `.editorconfig`, `.gitconfig`, `~/.ssh/config`,
+  nvim, ghostty, starship, atuin, mise, television, lsd, glow, gh-dash, Claude Code
+  (`~/.claude/…`), herdr (`~/.config/herdr/…`) and `~/.agents/…`. Real ssh hosts go in the
+  untracked `~/.ssh/config.local`, which the tracked config includes.
 - **macOS only:** VS Code and VS Code Insiders settings under `~/Library/Application Support`,
   plus iTerm2. iTerm2 isn't a link: the script points iTerm2's prefs folder at `iterm2/`.
 - **Linux only:** VS Code settings under `~/.config`, and the Flatpak copies of ghostty and VS

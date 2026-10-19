@@ -91,7 +91,6 @@ BREW_PACKAGES=(
     ripgrep
     bat
     lsd
-    eza
     fd
     fastfetch
     wget
@@ -105,6 +104,13 @@ BREW_PACKAGES=(
     htop
     zoxide
     television
+    starship
+    atuin
+    direnv
+    mise
+    glow
+    xh
+    sshs
     mas
     tree
     pstree
@@ -162,36 +168,12 @@ echo ">>> Installing claude..."
 curl -fsSL https://claude.ai/install.sh | bash
 
 # -----------------------------------------------------------------------------
-# nvm and Node.js
+# Node, Python, Go and global npm CLIs via mise (~/.config/mise/config.toml, linked below)
 # -----------------------------------------------------------------------------
 
-echo ">>> Installing nvm..."
-if [ ! -d "$HOME/.nvm" ]; then
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-else
-    echo ">>> nvm already installed"
-fi
-
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-if ! command_exists node; then
-    echo ">>> Installing Node.js LTS via nvm..."
-    nvm install --lts
-    nvm use --lts
-else
-    echo ">>> Node.js already installed: $(node --version)"
-fi
-
-echo ">>> Installing global npm packages..."
-NPM_GLOBALS=(typescript ts-node prettier eslint)
-for pkg in "${NPM_GLOBALS[@]}"; do
-    if ! npm list -g "$pkg" &>/dev/null; then
-        npm install -g "$pkg"
-    else
-        echo ">>> npm package $pkg already installed"
-    fi
-done
+echo ">>> Installing mise-managed tools..."
+# The config is linked later by link-dotfiles.sh, so point mise at the repo copy for this run.
+MISE_GLOBAL_CONFIG_FILE="$DOTFILES_DIR/mise/.config/mise/config.toml" mise install
 
 # -----------------------------------------------------------------------------
 # Rust via rustup
@@ -205,6 +187,8 @@ else
     echo ">>> Rust already installed: $(rustc --version)"
 fi
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+# rustaceanvim (nvim) expects rust-analyzer on PATH from the toolchain, not from Mason.
+rustup component add rust-analyzer clippy rustfmt
 
 # -----------------------------------------------------------------------------
 # Git credentials (macOS Keychain)
@@ -229,6 +213,8 @@ fi
 if [ -f "$DOTFILES_DIR/fonts/comic-shanns-mono-v1.3.0.zip" ]; then
     unzip -o "$DOTFILES_DIR/fonts/comic-shanns-mono-v1.3.0.zip" -d ~/Library/Fonts/
 fi
+# The font Ghostty and VS Code are actually set to ("ComicShanns Nerd Font").
+cp "$DOTFILES_DIR/fonts/ComicShannsNerdFont-Regular.ttf" ~/Library/Fonts/
 
 # -----------------------------------------------------------------------------
 # Oh-My-Zsh
@@ -262,11 +248,11 @@ else
     echo ">>> fzf-tab already installed"
 fi
 
-echo ">>> Installing Powerlevel10k..."
-if [ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" ]; then
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k"
+# Completions only (.zshrc adds its src/ to fpath); not loaded as an oh-my-zsh plugin.
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-completions" ]; then
+    git clone https://github.com/zsh-users/zsh-completions "$ZSH_CUSTOM/plugins/zsh-completions"
 else
-    echo ">>> Powerlevel10k already installed"
+    echo ">>> zsh-completions already installed"
 fi
 
 # -----------------------------------------------------------------------------
@@ -288,6 +274,39 @@ echo ">>> Linking dotfiles..."
 # Every link (shell, editors, terminals, git, VS Code, Claude Code, herdr, iTerm2 prefs) is made
 # by scripts/link-dotfiles.sh; --replace sets aside config that installers above already wrote.
 "$DOTFILES_DIR/scripts/link-dotfiles.sh" --replace
+
+# -----------------------------------------------------------------------------
+# Shell tool data that lives outside the repo
+# -----------------------------------------------------------------------------
+
+echo ">>> Fetching television community channels..."
+tv update-channels || true
+
+echo ">>> Importing zsh history into atuin..."
+[ -f "$HOME/.zsh_history" ] && atuin import zsh || true
+
+if [ -f "$HOME/.z" ]; then
+    echo ">>> Importing z directory history into zoxide..."
+    zoxide import --from z "$HOME/.z" || true
+fi
+
+echo ">>> Installing gh-dash..."
+gh extension list 2>/dev/null | grep -q dlvhdr/gh-dash || gh extension install dlvhdr/gh-dash || true
+
+# -----------------------------------------------------------------------------
+# Touch ID for sudo. Asks first, and writes /etc/pam.d/sudo_local, which survives macOS
+# updates; /etc/pam.d/sudo itself is reset by them and should never be edited.
+# -----------------------------------------------------------------------------
+
+if grep -qs '^auth[[:space:]]*sufficient[[:space:]]*pam_tid.so' /etc/pam.d/sudo_local; then
+    echo ">>> Touch ID for sudo already enabled"
+else
+    read -r -p ">>> Enable Touch ID for sudo? [y/N] " reply
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+        echo "auth       sufficient     pam_tid.so" | sudo tee -a /etc/pam.d/sudo_local >/dev/null
+        echo ">>> Touch ID for sudo enabled"
+    fi
+fi
 
 # macOS keyboard shortcuts (Home/End key bindings)
 echo ">>> Installing macOS key bindings..."
@@ -421,20 +440,22 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "Installed tools:"
-echo "  - CLI: git, neovim, tmux, fzf, ripgrep, bat, lsd, eza, lazygit, gh, tv"
-echo "  - Languages: Node.js (via nvm), Rust (via rustup)"
+echo "  - CLI: git, neovim, tmux, fzf, ripgrep, bat, lsd, lazygit, gh, tv, starship, atuin,"
+echo "         zoxide, direnv, glow, xh, sshs"
+echo "  - Languages: Node.js, Python, Go (via mise), Rust (via rustup)"
 echo "  - Apps: Ghostty, iTerm2, VSCode, Discord, Chrome, GitHub Desktop,"
 echo "          Logitech G Hub, Notion, Raycast, Rectangle, Signal, Spotify"
 echo ""
 echo "Post-setup tasks:"
 echo "  1. Restart terminal (or open Ghostty) for shell changes to take effect"
-echo "  2. Configure Powerlevel10k: p10k configure"
+echo "  2. Open nvim once: LazyVim installs plugins, Mason installs language servers"
 echo "  3. Caps Lock is remapped to Ctrl (via LaunchAgent, active now)"
-echo "  4. VSCode font settings:"
-echo '     "editor.fontFamily": "Comic Shanns Mono"'
-echo '     "terminal.integrated.fontFamily": "CaskaydiaCove Nerd Font Mono"'
+echo '  4. Fonts: Ghostty and VS Code use "ComicShanns Nerd Font" (installed above)'
 echo "  5. If Rectangle or Raycast prompt for accessibility permissions, grant them"
 echo "     in System Settings > Privacy & Security > Accessibility"
+echo "  6. Optional: 'atuin register' to sync shell history between machines"
+echo ""
+echo "Key bindings and commands: $DOTFILES_DIR/CHEATSHEET.md"
 echo ""
 
 if command_exists fastfetch; then

@@ -1,0 +1,42 @@
+# gh-dash — GitHub PR/issue dashboard (`gh dash`, alias `ghd`). Press ? inside for keys.
+# https://gh-dash.dev/configuration/
+prSections:
+  - title: My PRs
+    filters: is:open author:@me
+  - title: Needs my review
+    filters: is:open review-requested:@me
+  - title: Involved
+    filters: is:open involves:@me -author:@me
+issuesSections:
+  - title: Assigned
+    filters: is:open assignee:@me
+  - title: Created
+    filters: is:open author:@me
+  - title: Involved
+    filters: is:open involves:@me -author:@me
+defaults:
+  preview:
+    open: true
+    width: 60
+  prsLimit: 20
+  issuesLimit: 20
+  view: prs
+  refetchIntervalMinutes: 30
+pager:
+  diff: delta
+theme:
+  colors:
+    text:
+      primary: "#cdd6f4"
+      secondary: "#cba6f7"
+      inverted: "#11111b"
+      faint: "#bac2de"
+      warning: "#f9e2af"
+      success: "#a6e3a1"
+      error: "#f38ba8"
+    background:
+      selected: "#313244"
+    border:
+      primary: "#cba6f7"
+      secondary: "#45475a"
+      faint: "#313244"
