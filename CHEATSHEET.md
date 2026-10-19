@@ -148,6 +148,13 @@ Git aliases (in `git/.gitconfig` unless marked *zsh*):
 | `scripts/link-dotfiles.sh` | make missing links |
 | `scripts/link-dotfiles.sh --adopt` | a tool rewrote a linked file: take the live version into the repo |
 | `scripts/link-dotfiles.sh --replace` | set conflicting live files aside and link over them (new machine) |
+| `scripts/machine_setup.sh` | install newly added tools, then relink with `--replace`; safe to rerun on macOS and CachyOS |
+| `brew list --cask` | apps Homebrew manages; setup skips listed apps installed some other way |
+| `which rustc rustup` | `rustc` without `rustup` is Homebrew's `rust`: `brew uninstall rust` before setup to get rustup |
+| `find ~ -maxdepth 3 -path ~/Library -prune -o -name '*.pre-dotfiles.*' -print 2>/dev/null` | after setup: the files `--replace` set aside |
+
+Before running setup on a machine that already has some of this, see
+[the checks in the README](README.md#before-running-it-on-a-machine-thats-already-set-up).
 
 ## Neovim
 
