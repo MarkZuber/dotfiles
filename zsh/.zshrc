@@ -5,6 +5,16 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# Keep PATH free of duplicates. Marking `path` unique drops a repeat on sight and keeps the
+# leftmost copy, retroactively as well as from here on. Two entries arrive twice without it:
+# ~/.cargo/bin (~/.zshenv sources .cargo/env on an empty PATH, then the export below adds it
+# again with no check) and the flutter bin (~/.zshenv and ~/.zshrc_work.zsh add the same
+# folder, one spelled absolute and one spelled $HOME, so neither can see the other). Apple's
+# path_helper in /etc/zprofile reorders PATH between those two steps, which is why the pairs
+# end up far apart and are easy to miss. It also stops PATH growing on a re-source or in a
+# nested shell, which inherits the parent PATH and then prepends to it again.
+typeset -U path PATH
+
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
@@ -22,8 +32,9 @@ export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="powerlevel10k/powerlevel10k"
 
 # AUTOCOMPLETION
-# initialize autocompletion
-autoload -U compinit && compinit
+# oh-my-zsh runs compinit itself (with a cached, host-scoped zcompdump) when
+# oh-my-zsh.sh is sourced below, so no manual compinit here — it was a redundant,
+# full-audit second run.
 
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
@@ -111,6 +122,9 @@ plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions fzf-tab z)
 
 fpath+=${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src
 fpath+=$HOME/dotfiles/scripts/claude
+# Docker CLI completions — add to fpath BEFORE oh-my-zsh's compinit runs (below),
+# so they're picked up by that single compinit instead of a third redundant one.
+fpath=(~/.docker/completions $fpath)
 # TODO: this was the old way, make sure we're not breaking by removing
 # plugins=(git fzf zsh-syntax-highlighting zsh-autosuggestions z)
 # source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
@@ -146,9 +160,15 @@ source $ZSH/oh-my-zsh.sh
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# setup nvm
+# setup nvm — lazy-loaded (node/npm come from Homebrew; nvm has no installed versions,
+# so eager-sourcing nvm.sh + nvm_auto was ~300ms of pure startup cost for nothing).
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+nvm() {
+  unset -f nvm
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  nvm "$@"
+}
 
 alias vim="nvim"
 alias sv="sudo nvim"
@@ -235,17 +255,7 @@ alias -g :C='--help 2>&1 | bat --language=help --style=plain'
 # | Search and Find                                                            |
 # ------------------------------------------------------------------------------
 
-# super-grep ;)
-alias sgrep='grep -R -n -H -C 5 --exclude-dir={.git,.svn,CVS} '
-
-# search in files (with fallback)
-if which ack-grep >/dev/null 2>&1; then
-  alias ack=ack-grep
-
-  alias afind="ack-grep -iH"
-else
-  alias afind="ack -iH"
-fi
+alias grep="rg --color=auto -g '!**/.git/**/*' -g '!**/.fingerprint/**/*' -g '!uv.lock' -g '!**/.cargo/**/*' -g '!**/target/release/**/*'"
 
 # ------------------------------------------------------------------------------
 # | Network                                                                    |
@@ -294,31 +304,57 @@ alias ls="lsd "
 # eval "$(zoxide init zsh)"
 # alias cd="z"
 
-alias lt="lsd --tree"
-# list all files colorized in long format
-alias l="lsd -lhF $COLORFLAG"
-# list all files with directories
-alias ldir="l -R"
-# Show hidden files
-alias l.="lsd -dlhF .* $COLORFLAG"
-alias ldot="l."
-# use colors
-alias ls="lsd -F $COLORFLAG"
-# display only files & dir in a v-aling view
-alias l1="lsd -1 $COLORFLAG"
-# displays all files and directories in detail
-alias la="lsd -laFh $COLORFLAG"
-# displays all files and directories in detail (without "." and without "..")
-# alias lA="exa -lAFh $COLORFLAG"
+# Passing an empty string env variable clears the constraint for the execution lifecyle
+# alias lsd="env LS_COLORS= lsd"
+# alias ll="env LS_COLORS= lsd -lF --header --group-directories-first $COLORFLAG"
+# alias la="env LS_COLORS= lsd -laF --header $COLORFLAG"
+
+# Core replacements
+alias ls="lsd -F $COLORFLAG" 
+alias ll="lsd -lF --group-directories-first $COLORFLAG"
+alias la="lsd -laF $COLORFLAG" # Removed 'h' to respect bytes layout
 alias lsa="la"
-# displays all files and directories in detail with newest-files at bottom
-# alias lr="exa -laFhtr $COLORFLAG"
-# show last 10 recently changed files
-alias lt="lsd -altr | grep -v '^d' | tail -n 10"
-# show files and directories (also in sub-dir) that was touched in the last hour
-alias lf="find ./* -ctime -1 | xargs ls -ltr $COLORFLAG"
-# displays files and directories in detail
-alias ll="lsd -lFh --group-directories-first $COLORFLAG"
+
+# Detailed long format view shortcuts
+alias l="lsd -lF $COLORFLAG"   # Removed 'h' to respect bytes layout
+alias l1="lsd -1 $COLORFLAG"
+alias ldir="l -R"
+
+# Hidden file searches
+alias l.="lsd -dlF .* $COLORFLAG" # Removed 'h' to respect bytes layout
+alias ldot="l."
+
+# Interactive Tree View
+alias ltree="lsd --tree" 
+
+# File search helper tracking
+alias lf="find ./* -ctime -1 | xargs lsd -ltr $COLORFLAG" 
+
+# alias lt="lsd --tree"
+# # list all files colorized in long format
+# alias l="lsd -lhF $COLORFLAG"
+# # list all files with directories
+# alias ldir="l -R"
+# # Show hidden files
+# alias l.="lsd -dlhF .* $COLORFLAG"
+# alias ldot="l."
+# # use colors
+# alias ls="lsd -F $COLORFLAG"
+# # display only files & dir in a v-aling view
+# alias l1="lsd -1 $COLORFLAG"
+# # displays all files and directories in detail
+# alias la="lsd -laFh $COLORFLAG"
+# # displays all files and directories in detail (without "." and without "..")
+# # alias lA="exa -lAFh $COLORFLAG"
+# alias lsa="la"
+# # displays all files and directories in detail with newest-files at bottom
+# # alias lr="exa -laFhtr $COLORFLAG"
+# # show last 10 recently changed files
+# alias lt="lsd -altr | grep -v '^d' | tail -n 10"
+# # show files and directories (also in sub-dir) that was touched in the last hour
+# alias lf="find ./* -ctime -1 | xargs ls -ltr $COLORFLAG"
+# # displays files and directories in detail
+# alias ll="lsd -lFh --group-directories-first $COLORFLAG"
 # shows the most recently modified files at the bottom of
 # alias llr="exa -lartFh --group-directories-first $COLORFLAG"
 # list only directories
@@ -431,11 +467,121 @@ else
   alias ci="code-insiders"
 fi
 
-# The following lines have been added by Docker Desktop to enable Docker CLI completions.
-fpath=(~/.docker/completions $fpath)
-autoload -Uz compinit
-compinit 
-# End of Docker CLI completions
+### Ghostty Window Pane Tinting
+# Goal being to be able to manually select a background tint (the tint-aliases)
+# and also to be able to have any new pane randomly pick a color value.
+# The fancy part is that it also makes sure not to duplicate colors when launching.
+# So we shouldn't get two forest colored panes.  Unless we open too many panes.
+# The pane color limit is per-window, not across all windows.  Each window
+# gets its own color selection list so we won't run out.
+# It does mean however that two windows could (likely) have a pane with the same color.
+
+# 1. Manual Tint Aliases
+alias tint-off="printf '\e]111\a'"            # System / Native Theme
+alias tint-slate="printf '\e]11;#161b22\a'"   # GitHub Dark-style
+alias tint-navy="printf '\e]11;#0d1b2a\a'"    # Deep Oceanic Blue
+alias tint-teal="printf '\e]11;#072227\a'"    # Matrix-adjacent Dark Teal
+alias tint-forest="printf '\e]11;#132219\a'"  # Clean Dark Green
+alias tint-olive="printf '\e]11;#1c1d11\a'"   # Earthy Camo Tone
+alias tint-plum="printf '\e]11;#1e122b\a'"    # Dracula Purple
+alias tint-maroon="printf '\e]11;#281313\a'"  # Production Red
+alias tint-mocha="printf '\e]11;#1e1713\a'"   # Warm Espresso Brown
+alias tint-carbon="printf '\e]11;#171717\a'"  # Pure Minimalist Charcoal
+
+# Helper to get the state file unique to THIS Ghostty window
+_get_ghostty_state_file() {
+  # Fallback to "default" if GHOSTTY_WINDOW_ID isn't set yet
+  local win_id="${GHOSTTY_WINDOW_ID:-default}"
+  echo "${TMPDIR:-/tmp}/ghostty_colors_${USER}_win_${win_id}"
+}
+
+# 2. Automated Smart Deduplication Switcher (Per-Window Isolated)
+assign_curated_pane_tint() {
+  local state_file=$(_get_ghostty_state_file)
+  touch "$state_file"
+
+  local all_colors=(
+    '\e]111\a'        # system theme / tint-off
+    '\e]11;#161b22\a' # slate
+    '\e]11;#0d1b2a\a' # navy
+    '\e]11;#072227\a' # teal
+    '\e]11;#132219\a' # forest
+    '\e]11;#1c1d11\a' # olive
+    '\e]11;#1e122b\a' # plum
+    '\e]11;#281313\a' # maroon
+    '\e]11;#1e1713\a' # mocha
+    '\e]11;#171717\a' # carbon
+  )
+
+  # Purge stale dead PIDs from this window's tracking file
+  local running_pids=()
+  if [[ -s "$state_file" ]]; then
+    while read -r recorded_pid recorded_color; do
+      if kill -0 "$recorded_pid" 2>/dev/null; then
+        running_pids+=("$recorded_pid $recorded_color")
+      fi
+    done < "$state_file"
+  fi
+
+  # Rewrite active tracking file with only live panes for this window
+  printf "%s\n" "${running_pids[@]}" > "$state_file"
+
+  # Gather currently occupied colors in this window
+  local used_colors=()
+  if [[ -s "$state_file" ]]; then
+    used_colors=($(awk '{print $2}' "$state_file"))
+  fi
+
+  # Determine which colors are completely unassigned in this window
+  local available_colors=()
+  for col in "${all_colors[@]}"; do
+    if [[ ! " ${used_colors[@]} " =~ " ${col} " ]]; then
+      available_colors+=("$col")
+    fi
+  done
+
+  # Fallback to the full pool if layout density exceeds your 10 palette choices
+  if [[ ${#available_colors[@]} -eq 0 ]]; then
+    available_colors=("${all_colors[@]}")
+  fi
+
+  # Pick a random selection from only the unused colors
+  local random_index=$(( RANDOM % ${#available_colors[@]} + 1 ))
+  local final_selection="${available_colors[$random_index]}"
+
+  # Lock selection in the file matching this shell's Process ID ($$)
+  echo "$$ $final_selection" >> "$state_file"
+
+  # Push choice out to the Ghostty layout renderer
+  printf "$final_selection"
+}
+
+# 3. Dynamic Cleanup Hook on Window Close
+clean_pane_tint_on_exit() {
+  local state_file=$(_get_ghostty_state_file)
+  if [[ -f "$state_file" ]]; then
+    local temp_file=$(mktemp)
+    grep -v "^$$ " "$state_file" > "$temp_file" 2>/dev/null
+    mv "$temp_file" "$state_file"
+    
+    # If the file is now empty, delete it entirely
+    [[ ! -s "$state_file" ]] && rm -f "$state_file"
+  fi
+}
+trap clean_pane_tint_on_exit EXIT INT TERM
+
+# Run the smart assignment immediately when shell spawns
+# assign_curated_pane_tint
+
+# 4. SSH Safety Wrapper Integration
+ssh() {
+  tint-maroon
+  command ssh "$@"
+  assign_curated_pane_tint  # Restores a clean, window-appropriate unused color upon exit
+}
+
+### END Window colorization
+
 
 OS=$(uname)
 case "$OS" in
@@ -453,7 +599,10 @@ esac
 alias gdm='git diff main...$(git rev-parse --abbrev-ref HEAD)'
 rmc() { claude "resolve merge conflicts"; }
 
+# herdr pane/agent helpers: hls, hrun, hwatch, hjoin, hme (see the file for the full list).
+# Only useful inside herdr; harmless elsewhere, since every function just shells out.
+[[ ! -f ~/.agents/herdr-spawn.zsh ]] || source ~/.agents/herdr-spawn.zsh
+
 # source local file that won't get checked in to my dotfiles
 [[ ! -f ~/.zshrc_local.zsh ]] || source ~/.zshrc_local.zsh
 [[ ! -f ~/.zshrc_work.zsh ]] || source ~/.zshrc_work.zsh
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion

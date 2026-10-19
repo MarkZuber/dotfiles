@@ -18,5 +18,11 @@
     "workbench.editor.enablePreview": false,
     "zenMode.restore": false,
     "workbench.secondarySideBar.defaultVisibility": "hidden",
-    "claudeCode.preferredLocation": "sidebar"
+    "claudeCode.preferredLocation": "sidebar",
+    "chat.disableAIFeatures": true,
+    "gitlens.ai.model": "gitkraken",
+    "gitlens.ai.gitkraken.model": "gemini:gemini-2.5-flash",
+    "workbench.editor.languageDetection": false,
+    "git.blame.statusBarItem.enabled": false,
+    "editor.wordWrap": "on"
 }
