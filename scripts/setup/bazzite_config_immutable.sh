@@ -13,7 +13,7 @@
 # mkdir -p ~/repos
 # cd ~/repos
 # git clone https://github.com/markzuber/dotfiles
-# then run ~/repos/dotfiles/bazzite_config_immutable.sh
+# Then run: ~/dotfiles/scripts/machine_setup.sh (or this script directly)
 
 set -e
 
@@ -26,24 +26,6 @@ echo ""
 
 command_exists() {
     command -v "$1" &> /dev/null
-}
-
-# Create symlink, removing existing file/dir if it's not already a link
-make_link() {
-    local target="$1"
-    local link_name="$2"
-
-    if [ -L "$link_name" ]; then
-        # Already a symlink, update it
-        ln -sf "$target" "$link_name"
-    elif [ -e "$link_name" ]; then
-        # Exists but not a symlink, remove and link
-        rm -rf "$link_name"
-        ln -s "$target" "$link_name"
-    else
-        # Doesn't exist, just create the link
-        ln -s "$target" "$link_name"
-    fi
 }
 
 install_homebrew_if_needed() {
@@ -81,7 +63,7 @@ install_homebrew_if_needed
 
 echo ">>> Installing CLI tools via Homebrew..."
 # These tools work great from Homebrew and don't need system integration
-brew install lsd fzf ripgrep neovim bat tmux neofetch git
+brew install lsd fzf ripgrep jq neovim bat tmux neofetch git
 
 # -----------------------------------------------------------------------------
 # Git Credential Manager via Homebrew
@@ -230,32 +212,9 @@ fi
 # -----------------------------------------------------------------------------
 
 echo ">>> Linking dotfiles..."
-
-# zshrc
-make_link ~/repos/dotfiles/zsh/.zshrc ~/.zshrc
-
-# ghostty config
-mkdir -p ~/.config/ghostty
-make_link ~/repos/dotfiles/ghostty/.config/ghostty/config ~/.config/ghostty/config
-
-# For Flatpak Ghostty, also link to the Flatpak config location
-mkdir -p ~/.var/app/com.mitchellh.ghostty/config/ghostty
-make_link ~/repos/dotfiles/ghostty/.config/ghostty/config ~/.var/app/com.mitchellh.ghostty/config/ghostty/config
-
-# p10k
-make_link ~/repos/dotfiles/p10k/.p10k.zsh ~/.p10k.zsh
-
-# nvim
-make_link ~/repos/dotfiles/nvim/.config/nvim ~/.config/nvim
-
-# tmux
-make_link ~/repos/dotfiles/tmux/.tmux.conf ~/.tmux.conf
-
-# editorconfig
-make_link ~/repos/dotfiles/editorconfig/.editorconfig ~/.editorconfig
-
-# gitconfig
-make_link ~/repos/dotfiles/git/.gitconfig ~/.gitconfig
+# Every link (shell, editors, terminals, git, VS Code incl. Flatpak, Claude Code, herdr) is made
+# by scripts/link-dotfiles.sh; --replace sets aside config that installers above already wrote.
+"$(cd "$(dirname "$0")/../.." && pwd)/scripts/link-dotfiles.sh" --replace
 
 # -----------------------------------------------------------------------------
 # Xbox controller (xone) - This is tricky on immutable systems

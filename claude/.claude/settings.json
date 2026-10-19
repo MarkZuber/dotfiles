@@ -12,6 +12,7 @@
       "~/wt"
     ]
   },
+  "model": "opus[1m]",
   "skillOverrides": {
     "find-skills": "off"
   },
@@ -22,12 +23,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/mark.zuber/.claude/hooks/herdr-agent-state.sh' session",
+            "command": "bash ~/.config/herdr/scripts/mr-token.sh",
             "timeout": 10
-          },
+          }
+        ]
+      },
+      {
+        "matcher": "^(startup|resume|clear|compact|fork)$",
+        "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/mark.zuber/.config/herdr/scripts/mr-token.sh'",
+            "command": "bash ~/.claude/hooks/herdr-agent-state.sh session",
             "timeout": 10
           }
         ]
@@ -39,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/mark.zuber/.claude/hooks/worktree-on-plan-exit.sh'",
+            "command": "bash ~/.claude/hooks/worktree-on-plan-exit.sh",
             "timeout": 10
           }
         ]
@@ -51,12 +57,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/mark.zuber/.config/herdr/scripts/mr-token.sh'",
+            "command": "bash ~/.config/herdr/scripts/mr-token.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "bash '/Users/mark.zuber/.config/herdr/scripts/notify.sh' finished",
+            "command": "bash ~/.config/herdr/scripts/notify.sh finished",
             "timeout": 10
           }
         ]
@@ -68,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/mark.zuber/.config/herdr/scripts/notify.sh' 'needs input'",
+            "command": "bash ~/.config/herdr/scripts/notify.sh 'needs input'",
             "timeout": 10
           }
         ]
@@ -81,10 +87,20 @@
   },
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": false
+    "rust-analyzer-lsp@claude-plugins-official": false,
+    "swift-lsp@claude-plugins-official": false
+  },
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "xhigh"
+    }
   },
   "autoUpdatesChannel": "latest",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
 }

@@ -4,14 +4,14 @@
 # mkdir -p ~/repos
 # cd ~/repos
 # git clone https://github.com/markzuber/dotfiles
-# then run ~/repos/dotfiles/bazzite_config.sh
+# Then run: ~/dotfiles/scripts/machine_setup.sh (or this script directly)
 
 # Need to fix (at least on Nobora)
 # 1. fix sound (usb plugged in?)
 # 2. fix nvim configs (because obviously they're out of date and broken)
 
 sudo dnf update -y
-sudo dnf install lsd fzf ripgrep nvim bat tmux neofetch git -y
+sudo dnf install lsd fzf ripgrep jq nvim bat tmux neofetch git -y
 
 ## git credential manager - need to test this
 sudo dnf copr enable matthickford/git-credential-manager -y
@@ -60,24 +60,8 @@ git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/p
 # install powerlevel10k (existing config is in the p10k file)
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
 
-# link dotfiles files to home/.config/etc
-rm ~/.zshrc
-ln -s ~/repos/repos/dotfiles/zsh/.zshrc ~/.zshrc
-mv ~/.config/ghostty/config ~/.config/ghostty/config.bak || true
-ln -s ~/repos/dotfiles/ghostty/.config/ghostty/config ~/.config/ghostty/config
-mv ~/.p10k.zsh ~/.p10k.zsh.bak || true
-ln -s ~/repos/dotfiles/p10k/.p10k.zsh ~/.p10k.zsh
-
-rm ~/.config/nvim || true
-ln -s ~/repos/dotfiles/nvim/.config/nvim ~/.config/nvim
-# tmux
-mv ~/.tmux.conf ~/.tmux.conf.bak || true
-ln -s ~/repos/dotfiles/tmux/.tmux.conf ~/.tmux.conf
-# editorconfig
-ln -s ~/repos/dotfiles/editorconfig/.editorconfig ~/.editorconfig
-# gitconfig
-mv ~/.gitconfig ~/.gitconfig.bak || true
-ln -s ~/repos/dotfiles/git/.gitconfig ~/.gitconfig
+# link dotfiles files to home/.config/etc (scripts/link-dotfiles.sh makes every link)
+"$(cd "$(dirname "$0")/../.." && pwd)/scripts/link-dotfiles.sh" --replace
 
 # install/configure xone for xbox remote controller
 git clone https://github.com/medusalix/xone

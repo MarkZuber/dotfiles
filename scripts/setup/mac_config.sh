@@ -7,7 +7,7 @@
 # First:
 #   cd ~
 #   git clone https://github.com/markzuber/dotfiles
-# Then run: ~/dotfiles/scripts/mac_config.sh
+# Then run: ~/dotfiles/scripts/machine_setup.sh (or this script directly)
 
 set -e
 
@@ -22,22 +22,6 @@ DOTFILES_DIR="$HOME/dotfiles"
 
 command_exists() {
     command -v "$1" &>/dev/null
-}
-
-make_link() {
-    local target="$1"
-    local link_name="$2"
-    local link_dir
-    link_dir="$(dirname "$link_name")"
-    mkdir -p "$link_dir"
-    if [ -L "$link_name" ]; then
-        ln -sf "$target" "$link_name"
-    elif [ -e "$link_name" ]; then
-        rm -rf "$link_name"
-        ln -s "$target" "$link_name"
-    else
-        ln -s "$target" "$link_name"
-    fi
 }
 
 brew_install() {
@@ -286,56 +270,30 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# tmux plugin manager (.tmux.conf runs ~/.tmux/plugins/tpm/tpm)
+# -----------------------------------------------------------------------------
+
+echo ">>> Installing tpm..."
+if [ ! -d ~/.tmux/plugins/tpm ]; then
+    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+else
+    echo ">>> tpm already installed"
+fi
+
+# -----------------------------------------------------------------------------
 # Symlink dotfiles
 # -----------------------------------------------------------------------------
 
 echo ">>> Linking dotfiles..."
-
-# zshrc
-make_link "$DOTFILES_DIR/zsh/.zshrc" ~/.zshrc
-
-# p10k
-make_link "$DOTFILES_DIR/p10k/.p10k.zsh" ~/.p10k.zsh
-
-# nvim
-make_link "$DOTFILES_DIR/nvim/.config/nvim" ~/.config/nvim
-
-# tmux
-make_link "$DOTFILES_DIR/tmux/.tmux.conf" ~/.tmux.conf
-
-# editorconfig
-make_link "$DOTFILES_DIR/editorconfig/.editorconfig" ~/.editorconfig
-
-# gitconfig
-make_link "$DOTFILES_DIR/git/.gitconfig" ~/.gitconfig
-
-# ghostty config
-make_link "$DOTFILES_DIR/ghostty/.config/ghostty/config" ~/.config/ghostty/config
-
-# claude
-make_link "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
-make_link "$DOTFILES_DIR/claude/statusline-command.sh" ~/.claude/statusline-command.sh
-
-# VSCode settings (macOS path differs from Linux)
-echo ">>> Linking VSCode settings..."
-VSCODE_SETTINGS_SRC="$DOTFILES_DIR/vscode/settings.json"
-make_link "$VSCODE_SETTINGS_SRC" "$HOME/Library/Application Support/Code/User/settings.json"
-make_link "$VSCODE_SETTINGS_SRC" "$HOME/Library/Application Support/Code - Insiders/User/settings.json"
+# Every link (shell, editors, terminals, git, VS Code, Claude Code, herdr, iTerm2 prefs) is made
+# by scripts/link-dotfiles.sh; --replace sets aside config that installers above already wrote.
+"$DOTFILES_DIR/scripts/link-dotfiles.sh" --replace
 
 # macOS keyboard shortcuts (Home/End key bindings)
 echo ">>> Installing macOS key bindings..."
 mkdir -p ~/Library/KeyBindings
 cp "$DOTFILES_DIR/macos/DefaultKeyBinding.dict" ~/Library/KeyBindings/DefaultKeyBinding.dict
 
-# iTerm2 preferences
-echo ">>> Configuring iTerm2..."
-ITERM_PLIST="$DOTFILES_DIR/iterm2/com.googlecode.iterm2.plist"
-if [ -f "$ITERM_PLIST" ]; then
-    # Tell iTerm2 to load prefs from the dotfiles directory
-    defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$DOTFILES_DIR/iterm2"
-    defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
-    echo ">>> iTerm2 configured to load prefs from $DOTFILES_DIR/iterm2"
-fi
 
 # -----------------------------------------------------------------------------
 # VSCode Extensions

@@ -10,7 +10,7 @@
     Run as Administrator from a new terminal after cloning dotfiles:
 
         git clone https://github.com/markzuber/dotfiles $HOME\dotfiles
-        pwsh -File $HOME\dotfiles\scripts\windows_config.ps1
+        pwsh -File $HOME\dotfiles\scripts\setup\windows_config.ps1
 
     Re-running is safe — all steps are idempotent.
 #>
@@ -44,6 +44,31 @@ function Make-Link($target, $linkName) {
         Remove-Item $linkName -Force -Recurse
     }
     New-Item -ItemType SymbolicLink -Path $linkName -Target $target -Force | Out-Null
+}
+
+# Deep-merge two JSON files the way scripts/link-dotfiles.sh does with jq `*`: objects merge
+# key by key, anything else (arrays included) is taken whole from the overlay.
+function Merge-JsonObject($base, $overlay) {
+    foreach ($p in $overlay.PSObject.Properties) {
+        $existing = $base.PSObject.Properties[$p.Name]
+        if ($existing -and $existing.Value -is [System.Management.Automation.PSCustomObject] -and
+            $p.Value -is [System.Management.Automation.PSCustomObject]) {
+            Merge-JsonObject $existing.Value $p.Value
+        } elseif ($existing) {
+            $existing.Value = $p.Value
+        } else {
+            $base | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value
+        }
+    }
+}
+
+function Merge-JsonFiles($basePath, $overlayPath) {
+    $base = Get-Content $basePath -Raw | ConvertFrom-Json
+    $overlay = Get-Content $overlayPath -Raw | ConvertFrom-Json
+    Merge-JsonObject $base $overlay
+    # Windows PowerShell 5.1 otherwise serializes arrays as {"value": [...], "Count": n}.
+    Remove-TypeData System.Array -ErrorAction SilentlyContinue
+    $base | ConvertTo-Json -Depth 32
 }
 
 function Winget-Install($id, $label) {
@@ -175,7 +200,40 @@ Make-Link "$DOTFILES_DIR\git\.gitconfig"           "$HOME\.gitconfig"
 Make-Link "$DOTFILES_DIR\editorconfig\.editorconfig" "$HOME\.editorconfig"
 Make-Link "$DOTFILES_DIR\nvim\.config\nvim"        "$env:LOCALAPPDATA\nvim"
 Make-Link "$DOTFILES_DIR\ghostty\.config\ghostty\config_windows" "$env:APPDATA\ghostty\config"
-Make-Link "$DOTFILES_DIR\claude\settings.json"     "$HOME\.claude\settings.json"
+
+# Claude Code: the same per-file links scripts/link-dotfiles.sh makes on macOS and Linux. The
+# herdr scripts are linked only because the hooks in settings.json call them; outside herdr
+# they exit at once.
+$claudeFiles = @(
+    'CLAUDE.md',
+    'statusline-command.sh',
+    'hooks\herdr-agent-state.sh',
+    'hooks\worktree-on-plan-exit.sh',
+    'output-styles\eli5.md',
+    'skills\bro\SKILL.md'
+)
+foreach ($f in $claudeFiles) {
+    Make-Link "$DOTFILES_DIR\claude\.claude\$f" "$HOME\.claude\$f"
+}
+foreach ($f in @('mr-token.sh', 'notify.sh')) {
+    Make-Link "$DOTFILES_DIR\herdr\.config\herdr\scripts\$f" "$HOME\.config\herdr\scripts\$f"
+}
+
+# ~/.claude/settings.json is the personal part, plus ~/.claude/settings.work.json if this
+# machine has one (never tracked; see README). With no work part it is a plain link, so it
+# stays current after a pull. With one, the two are merged into a file: rerun this script
+# after changing either.
+$claudeBase = "$DOTFILES_DIR\claude\.claude\settings.json"
+$claudeWork = "$HOME\.claude\settings.work.json"
+$claudeLive = "$HOME\.claude\settings.json"
+if (Test-Path $claudeWork) {
+    $merged = Merge-JsonFiles $claudeBase $claudeWork
+    # Drop a link left by an earlier run first, or the write would land in the repo copy.
+    if (Test-Path $claudeLive) { Remove-Item $claudeLive -Force }
+    [System.IO.File]::WriteAllText($claudeLive, $merged, (New-Object System.Text.UTF8Encoding $false))
+} else {
+    Make-Link $claudeBase $claudeLive
+}
 
 # VSCode settings
 $vsSrc = "$DOTFILES_DIR\vscode\settings.json"

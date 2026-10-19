@@ -4,7 +4,7 @@ onboarding = false
 show_agent_labels_on_pane_borders = false
 
 # 5 wider than the default 26, so "!165 audio-node-compatibility" fits without ellipsis.
-sidebar_width = 31
+sidebar_width = 40
 
 # Attention queue: agents that are blocked or finished sort to the top, rather than
 # being grouped by the space they happen to live in.
@@ -46,6 +46,7 @@ auto_switch = false
 enabled = true
 
 [keys]
+prefix = ["ctrl+f", "ctrl+space"]
 # The built-in worktree action creates under a single global [worktrees] directory, which
 # cannot be made repo-relative. Unbound here in favour of the prefix+shift+g popup below,
 # which creates under <main-checkout>/.claude/worktrees/ like wt and EnterWorktree do.
@@ -64,16 +65,24 @@ command = "herdr plugin action invoke open-file-viewer-tab --plugin herdr-file-v
 [[keys.command]]              # new worktree under <main-checkout>/.claude/worktrees/
 key = "prefix+shift+g"
 type = "popup"
-command = "bash /Users/mark.zuber/.config/herdr/scripts/new-worktree.sh"
+command = "bash ~/.config/herdr/scripts/new-worktree.sh"
 width = "60%"
 height = "30%"
 
-[[keys.command]]
-key = "prefix+ctrl+g"
-type = "shell"
-command = "herdr plugin action invoke open-lazygit --plugin herdr-lazygit"
+# [[keys.command]]
+# key = "prefix+ctrl+g"
+# type = "shell"
+# command = "herdr plugin action invoke open-lazygit --plugin herdr-lazygit"
+
+# [[keys.command]]
+# key = "prefix+ctrl+shift+g"
+# type = "shell"
+# command = "herdr plugin action invoke open-lazygit-tab --plugin herdr-lazygit"
 
 [[keys.command]]
-key = "prefix+ctrl+shift+g"
-type = "shell"
-command = "herdr plugin action invoke open-lazygit-tab --plugin herdr-lazygit"
+key = "prefix+ctrl+g"
+type = "popup"
+command = "lazygit"
+description = "run lazygit"
+width = "80%"
+height = "80%"

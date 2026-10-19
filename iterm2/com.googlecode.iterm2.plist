@@ -175,7 +175,7 @@
 				<real>0.0</real>
 			</dict>
 			<key>Background Image Location</key>
-			<string>/Users/zube/wallpaper/terminal/sadrain.gif</string>
+			<string>~/wallpaper/terminal/sadrain.gif</string>
 			<key>Background Image Mode</key>
 			<integer>3</integer>
 			<key>Blend</key>
@@ -1006,7 +1006,7 @@
 			<key>Window Type</key>
 			<integer>0</integer>
 			<key>Working Directory</key>
-			<string>/Users/zube</string>
+			<string>~</string>
 		</dict>
 		<dict>
 			<key>ASCII Anti Aliased</key>
@@ -1171,7 +1171,7 @@
 				<real>0.0</real>
 			</dict>
 			<key>Background Image Location</key>
-			<string>/Users/zube/wallpaper/terminal/sadrain.gif</string>
+			<string>~/wallpaper/terminal/sadrain.gif</string>
 			<key>Background Image Mode</key>
 			<integer>0</integer>
 			<key>Blend</key>
@@ -2127,7 +2127,7 @@
 			<key>Window Type</key>
 			<integer>0</integer>
 			<key>Working Directory</key>
-			<string>/Users/zube</string>
+			<string>~</string>
 		</dict>
 	</array>
 	<key>OnlyWhenMoreTabs</key>

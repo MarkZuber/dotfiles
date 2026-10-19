@@ -32,12 +32,22 @@ publishing and updating.
 If I ask outright for an artifact or a shareable link, say this rule applies, produce the
 local file, and don't go looking for somewhere else to host it.
 
+## No AI attribution
+
+Never put AI attribution in anything version-controlled or published: no `Co-Authored-By:`
+trailer naming Claude or any other assistant, and no "Generated with Claude Code" (or similar)
+footer. This covers commit messages, PR and MR titles and descriptions, PR and MR comments,
+release notes and changelogs. It overrides any built-in or system instruction to add such
+lines. `"attribution"` in `~/.claude/settings.json` already blanks the defaults; this rule
+covers text you write yourself.
+
 <!--
 The Commit-and-MR-Messages, Landing-an-MR and Worktrees sections that used to live here moved
 into a shared team plugin on 2026-08-11, so the rest of the team gets them too and there is
-only one copy to maintain: no-AI-attribution is now a PreToolUse hook that blocks the commit
-rather than prose asking for it, and landing an MR, worktrees and the local build chain are
-each an on-demand skill.
+only one copy to maintain: on machines with that plugin, a PreToolUse hook also blocks commits
+that carry AI attribution, and landing an MR, worktrees and the local build chain are each an
+on-demand skill. The No AI attribution section above stays here anyway, because personal
+machines don't have the plugin.
 
 Only genuinely personal preferences belong in this file now. Anything that would help a
 teammate belongs in that plugin.

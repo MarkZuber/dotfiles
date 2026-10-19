@@ -39,6 +39,6 @@ if [[ ! -z $unmerged_files ]]; then
 else
    # Link new or repaired config into place.
    echo -e "${BLUE}Linking config into place...${NC}"
-   bin/link-dotfiles.sh
+   scripts/link-dotfiles.sh
    echo -e "${GREEN}Done.${NC}"
 fi

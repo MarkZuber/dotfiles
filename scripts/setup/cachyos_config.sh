@@ -8,7 +8,7 @@
 # First thing to do is:
 # cd ~
 # git clone https://github.com/markzuber/dotfiles
-# then run ~/dotfiles/cachyos_config.sh
+# Then run: ~/dotfiles/scripts/machine_setup.sh (or this script directly)
 
 set -e
 
@@ -47,21 +47,6 @@ install_aur_if_missing() {
         yay -S --noconfirm "$pkg"
     else
         echo ">>> $pkg already installed"
-    fi
-}
-
-# Create symlink, removing existing file/dir if it's not already a link
-make_link() {
-    local target="$1"
-    local link_name="$2"
-
-    if [ -L "$link_name" ]; then
-        ln -sf "$target" "$link_name"
-    elif [ -e "$link_name" ]; then
-        rm -rf "$link_name"
-        ln -s "$target" "$link_name"
-    else
-        ln -s "$target" "$link_name"
     fi
 }
 
@@ -105,6 +90,7 @@ PACMAN_PACKAGES=(
     tmux
     fzf
     ripgrep
+    jq
     bat
     lsd
     fastfetch
@@ -308,40 +294,9 @@ fi
 # -----------------------------------------------------------------------------
 
 echo ">>> Linking dotfiles..."
-
-# zshrc
-make_link ~/repos/dotfiles/zsh/.zshrc ~/.zshrc
-
-# ghostty config
-mkdir -p ~/.config/ghostty
-make_link ~/repos/dotfiles/ghostty/.config/ghostty/config ~/.config/ghostty/config
-
-# p10k
-make_link ~/repos/dotfiles/p10k/.p10k.zsh ~/.p10k.zsh
-
-# nvim
-make_link ~/repos/dotfiles/nvim/.config/nvim ~/.config/nvim
-
-# tmux
-make_link ~/repos/dotfiles/tmux/.tmux.conf ~/.tmux.conf
-
-# editorconfig
-make_link ~/repos/dotfiles/editorconfig/.editorconfig ~/.editorconfig
-
-# gitconfig
-make_link ~/repos/dotfiles/git/.gitconfig ~/.gitconfig
-
-# VSCode settings - native installs
-echo ">>> Linking VSCode settings..."
-VSCODE_SETTINGS_SRC=~/repos/dotfiles/vscode/settings.json
-
-# Native VSCode Stable
-mkdir -p ~/.config/Code/User
-make_link "$VSCODE_SETTINGS_SRC" ~/.config/Code/User/settings.json
-
-# Native VSCode Insiders
-mkdir -p ~/.config/"Code - Insiders"/User
-make_link "$VSCODE_SETTINGS_SRC" ~/.config/"Code - Insiders"/User/settings.json
+# Every link (shell, editors, terminals, git, VS Code incl. Flatpak, Claude Code, herdr) is made
+# by scripts/link-dotfiles.sh; --replace sets aside config that installers above already wrote.
+"$(cd "$(dirname "$0")/../.." && pwd)/scripts/link-dotfiles.sh" --replace
 
 # -----------------------------------------------------------------------------
 # Install VSCode

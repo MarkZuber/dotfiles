@@ -4,7 +4,7 @@ mscript/
 prompts/
 
 # Claude Code and herdr keep state, transcripts and sockets next to their config. Only the
-# files listed in bin/link-dotfiles.sh belong here; these patterns make sure the rest can't
+# files listed in scripts/link-dotfiles.sh belong here; these patterns make sure the rest can't
 # be committed by accident if a whole directory ever gets copied in.
 claude/.claude/backups/
 claude/.claude/cache/
@@ -27,6 +27,7 @@ claude/.claude/*.doctor-backup
 herdr/.config/herdr/*.log
 herdr/.config/herdr/*.sock
 herdr/.config/herdr/.plugins.lock
+herdr/.config/herdr/plugins.json
 herdr/.config/herdr/plugins/
 herdr/.config/herdr/release-notes.json
 herdr/.config/herdr/session.json

@@ -24,7 +24,7 @@ config.window_decorations = "RESIZE"
 config.window_background_opacity = 0.9
 config.macos_window_background_blur = 10
 
-config.window_background_image = '/Users/zube/wallpaper/terminal/SadRain.gif'
+config.window_background_image = wezterm.home_dir .. '/wallpaper/terminal/SadRain.gif'
 config.window_background_image_hsb = {
     -- Darken the background image by reducing it to 1/3rd
     brightness = 0.3,
