@@ -92,3 +92,9 @@ keybind = shift+right=adjust_selection:right
 
 keybind = command+shift+page_up=scroll_page_up
 keybind = command+shift+page_down=scroll_page_down
+
+# Resize splits by 10 pixels
+keybind = ctrl+shift+alt+up=resize_split:up,10
+keybind = ctrl+shift+alt+down=resize_split:down,10
+keybind = ctrl+shift+alt+left=resize_split:left,10
+keybind = ctrl+shift+alt+right=resize_split:right,10
