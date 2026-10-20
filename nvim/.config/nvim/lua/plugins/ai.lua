@@ -6,7 +6,8 @@ return {
     "yetone/avante.nvim",
     -- build.sh downloads the prebuilt release libraries; `make` compiles from source with cargo,
     -- which needs a gitlab.com dependency and fails behind SSH-only git URL rewrites.
-    build = "./build.sh",
+    -- Run through sh: the repo doesn't always ship build.sh executable.
+    build = "sh build.sh",
     event = "VeryLazy",
     version = false,
     dependencies = {
