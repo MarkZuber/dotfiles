@@ -161,7 +161,13 @@ alias vim="nvim"
 alias sv="sudo nvim"
 
 # User configuration
-export EDITOR='nvim'
+# --wait so callers (crontab -e, zle edit-command-line, ...) block until the tab is closed.
+# Falls back to nvim where VS Code isn't installed, e.g. over ssh to a headless box.
+if (( $+commands[code] )); then
+  export EDITOR='code --wait'
+else
+  export EDITOR='nvim'
+fi
 
 alias cls='clear'
 # Reload by replacing the shell: re-sourcing stacks hooks, keybindings and plugin state on top

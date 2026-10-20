@@ -83,7 +83,7 @@ name = Mark Zuber
 [pull]
 rebase = true
 [core]
-	editor = nvim
+	# No editor here: git falls back to $EDITOR, which .zshrc sets to VS Code or nvim.
 	pager = delta
 
 [interactive]
