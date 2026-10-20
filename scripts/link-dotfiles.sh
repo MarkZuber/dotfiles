@@ -131,6 +131,23 @@ for entry in "${MAP[@]}"; do
   src="$REPO/$rel"
   label="${target/$HOME/~}"
 
+  # The repo copy is itself a link: an earlier run linked a path to itself (see below), so the
+  # content is gone from the working tree. Only git has it; nothing here can rebuild it.
+  if [[ -L "$src" ]]; then
+    drift=1
+    printf '%s %s  %s is a symlink, not the file — restore it with: git checkout -- %s\n' \
+      "$(red broken)" "$label" "$rel" "$rel"
+    continue
+  fi
+
+  # A parent directory of the target is a link into the repo (left over from the old symlink
+  # farm, e.g. ~/.config/ghostty -> repo), so the target already IS the repo file. Every branch
+  # below would then delete the repo copy and link the path to itself.
+  if [[ ! -L "$target" && "$target" -ef "$src" ]]; then
+    printf '%s  %s  (via a linked parent directory)\n' "$(green ok)" "$label"
+    continue
+  fi
+
   # Already linked where it should be.
   if [[ -L "$target" && "$(readlink "$target")" == "$src" ]]; then
     printf '%s  %s\n' "$(green ok)" "$label"
