@@ -57,6 +57,7 @@ MAP=(
   "herdr/.config/herdr/scripts/mr-token.sh:$HOME/.config/herdr/scripts/mr-token.sh"
   "herdr/.config/herdr/scripts/new-worktree.sh:$HOME/.config/herdr/scripts/new-worktree.sh"
   "herdr/.config/herdr/scripts/notify.sh:$HOME/.config/herdr/scripts/notify.sh"
+  "herdr/.config/herdr-app/keys.json:$HOME/.config/herdr-app/keys.json"
   "herdr/.config/herdr-app/layouts/mrs-main.json:$HOME/.config/herdr-app/layouts/mrs-main.json"
   "herdr/.config/herdr-app/mods/mrs/main.js:$HOME/.config/herdr-app/mods/mrs/main.js"
   "herdr/.config/herdr-app/mods/mrs/mod.json:$HOME/.config/herdr-app/mods/mrs/mod.json"

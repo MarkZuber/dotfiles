@@ -39,6 +39,16 @@ Prefix is `Ctrl+F` or `Ctrl+Space`.
 | `prefix Shift+g` | new worktree (popup) under `<main-checkout>/.claude/worktrees/` |
 | `prefix Ctrl+g` | lazygit in an 80% popup |
 
+Herdr desktop app (`herdr-app/keys.json`); the defaults it ships are not listed:
+
+| Key | Action |
+| --- | --- |
+| `Cmd+E` | show/hide the side panel |
+| `Cmd+Opt+F` / `Cmd+Opt+C` / `Cmd+Opt+M` | open/close the Files / Changes / MRs panel |
+| `Cmd+Shift+E` | Files in its own tab |
+| `Cmd+G` | lazygit in a tab |
+| `Cmd+Shift+G` | new worktree |
+
 Shell helpers from `agents/.agents/herdr-spawn.zsh` (work inside herdr only):
 
 | Command | Does |
