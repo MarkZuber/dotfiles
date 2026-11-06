@@ -1,6 +1,6 @@
 # User-level Claude Code Rules
 
-## Documents and Reports (never publish)
+<!-- ## Documents and Reports (never publish)
 
 Nothing generated in a session leaves this machine. **Never call the `Artifact` tool to
 publish.** No document, report, dashboard, chart, diagram, or write-up gets rendered to a
@@ -30,7 +30,7 @@ URL, only reads, and either may be used when I explicitly ask. The prohibition i
 publishing and updating.
 
 If I ask outright for an artifact or a shareable link, say this rule applies, produce the
-local file, and don't go looking for somewhere else to host it.
+local file, and don't go looking for somewhere else to host it. -->
 
 ## No AI attribution
 
