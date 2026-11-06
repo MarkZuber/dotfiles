@@ -10,7 +10,7 @@
 #                               already written default config
 #   link-dotfiles.sh --check    report only; exit non-zero if anything is not linked
 #
-# Links are absolute. Under ~/.claude, ~/.config/herdr and ~/.agents they are made per-FILE,
+# Links are absolute. Under ~/.claude, ~/.config/herdr, ~/.config/herdr-app and ~/.agents they are made per-FILE,
 # never per-directory: those directories hold transcripts, logs and sockets alongside the
 # config, so a directory link would expose all of it. A whole directory is linked only where
 # it is pure config (nvim, single skills).
@@ -57,6 +57,11 @@ MAP=(
   "herdr/.config/herdr/scripts/mr-token.sh:$HOME/.config/herdr/scripts/mr-token.sh"
   "herdr/.config/herdr/scripts/new-worktree.sh:$HOME/.config/herdr/scripts/new-worktree.sh"
   "herdr/.config/herdr/scripts/notify.sh:$HOME/.config/herdr/scripts/notify.sh"
+  "herdr/.config/herdr-app/layouts/mrs-main.json:$HOME/.config/herdr-app/layouts/mrs-main.json"
+  "herdr/.config/herdr-app/mods/mrs/main.js:$HOME/.config/herdr-app/mods/mrs/main.js"
+  "herdr/.config/herdr-app/mods/mrs/mod.json:$HOME/.config/herdr-app/mods/mrs/mod.json"
+  "herdr/.config/herdr-app/mods/mrs-tabs/main.js:$HOME/.config/herdr-app/mods/mrs-tabs/main.js"
+  "herdr/.config/herdr-app/mods/mrs-tabs/mod.json:$HOME/.config/herdr-app/mods/mrs-tabs/mod.json"
   "agents/.agents/herdr-spawn.zsh:$HOME/.agents/herdr-spawn.zsh"
   "agents/.agents/skills/find-skills:$HOME/.agents/skills/find-skills"
   "agents/.agents/skills/herdr:$HOME/.agents/skills/herdr"
